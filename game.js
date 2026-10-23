@@ -1435,7 +1435,7 @@ loop();
 // debug/test handle (used by the CDP play-test)
 window.WOMB = { world, WombAudio, startGame, rebuildWorld, quitToMenu, setGfx,
   renderer: () => renderer, gfxMode: () => gfxMode, openQM, closeQM, qmOpen: () => qmOpen,
-  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.7.0",
+  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.8.0",
   packsEnabled: () => { try { return JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { return {}; } } };
 
 // launcher hand-off: a mode picked in launcher.html starts at once
@@ -3063,6 +3063,7 @@ function partsTick(dt) {
     const target = mailReady() ? -0.15 : 1.25;
     homeRefs.mailFlag.rotation.z += (target - homeRefs.mailFlag.rotation.z) * Math.min(1, dt * 5);
   }
+  if (homeRefs.grokMailbox) homeRefs.grokMailbox.userData.setFlag(mailReady());
   const mom = homeRefs.mom, car = homeRefs.belAir;
   // an install in progress: she must stay by the car
   if (Parts.installing) {
@@ -3164,6 +3165,29 @@ function zoneTick() {
     setTimeout(() => { Zone.busy = false; }, 850);
   }
 }
+// ---- Grok's content (content lane), wired in: town dressing props.
+// Every builder self-animates via userData.tick(t, dt); the town tick
+// drives them all. Placements keep the traffic lanes clear: lamps,
+// benches and the phone booth hug the storefront sidewalk (z ~31+).
+function addContentProps(T, solid) {
+  if (typeof buildFireHydrant !== "function") return; // content file absent
+  const tickers = homeRefs.contentTickers = homeRefs.contentTickers || [];
+  const add = (g, x, z, ry, sb) => {
+    g.position.set(x, 0, z); if (ry) g.rotation.y = ry;
+    g.traverse(o => { o.castShadow = true; });
+    T.add(g);
+    if (g.userData && g.userData.tick) tickers.push(g);
+    if (sb) solid(sb[0], sb[1], sb[2], sb[3]);
+    return g;
+  };
+  if (homeRefs.grokMailbox && homeRefs.grokMailbox.userData.tick) tickers.push(homeRefs.grokMailbox);
+  add(buildFireHydrant(), -22.5, 31.5, 0, [-22.7, -22.3, 31.3, 31.7]);
+  add(buildParkBench(), -11, 31.3, Math.PI, [-11.9, -10.1, 31.0, 31.6]);
+  add(buildParkBench(), 17.5, 31.3, Math.PI, [16.6, 18.4, 31.0, 31.6]);
+  for (const lx of [-20, -10, 0, 10, 20]) add(buildStreetLamp(), lx, 31.6, 0);
+  add(buildPhoneBooth(), 11.8, 31.2, Math.PI, [11.4, 12.2, 30.8, 31.6]);
+}
+
 function buildTown() {
   const T = new THREE.Group();
   homeScene.add(T);
@@ -3196,18 +3220,24 @@ function buildTown() {
     b.castShadow = true;
     b.scale.set(1.2, 0.7, 0.8); b.position.set(bx, 0.32, 4.6); T.add(b);
   }
-  { // her mailbox, by the street — the red flag means a parcel
-    const mb = new THREE.Group();
-    mb.add(box(0.09, 1.02, 0.09, stdPlain(0x7a4a28, 0.85), 0, 0.51, 0));
-    mb.add(box(0.58, 0.27, 0.30, stdPlain(0x3f5a74, 0.55), 0, 1.13, 0));
-    const flagPivot = new THREE.Group(); flagPivot.position.set(0.31, 1.13, 0);
-    flagPivot.add(box(0.03, 0.30, 0.02, stdPlain(0xc22e22, 0.5), 0, 0.13, 0));
-    flagPivot.rotation.z = 1.25; // down: no mail
-    mb.add(flagPivot);
+  { // her mailbox, by the street — the red flag means a parcel.
+    // Grok's builder (content lane) when the content file is loaded;
+    // the plain box mailbox is the fallback.
+    let mb = null;
+    if (typeof buildMailbox === "function") { mb = buildMailbox(); homeRefs.grokMailbox = mb; }
+    else {
+      mb = new THREE.Group();
+      mb.add(box(0.09, 1.02, 0.09, stdPlain(0x7a4a28, 0.85), 0, 0.51, 0));
+      mb.add(box(0.58, 0.27, 0.30, stdPlain(0x3f5a74, 0.55), 0, 1.13, 0));
+      const flagPivot = new THREE.Group(); flagPivot.position.set(0.31, 1.13, 0);
+      flagPivot.add(box(0.03, 0.30, 0.02, stdPlain(0xc22e22, 0.5), 0, 0.13, 0));
+      flagPivot.rotation.z = 1.25; // down: no mail
+      mb.add(flagPivot);
+      homeRefs.mailFlag = flagPivot;
+    }
     mb.position.set(7.4, 0, 12.6); mb.rotation.y = -0.12;
     mb.traverse(o => { o.castShadow = true; });
     T.add(mb);
-    homeRefs.mailFlag = flagPivot;
     solid(7.15, 7.65, 12.45, 12.75);
   }
   solid(-5.5, 0.55, 3.9, 4.1); solid(1.85, 5.5, 3.9, 4.1);       // front wall
@@ -3817,10 +3847,12 @@ function buildTown() {
   homeRefs.solids = solids;
   homeRefs.doors = doors;
   homeRefs.traffic = traffic;
+  addContentProps(T, solid);
   partitionTown(T);
   homeRefs.townTick = (t, dt) => {
     const mom = homeRefs.mom;
     for (const ex of extras) ex(t, dt);
+    if (homeRefs.contentTickers) for (const g of homeRefs.contentTickers) if (g.userData.tick) g.userData.tick(t, dt);
     for (const d of doors) {
       const near = mom && Math.hypot(mom.position.x - d.cx, mom.position.z - d.cz) < 1.7;
       const target = near ? d.openAng : 0;
@@ -4066,6 +4098,20 @@ function buildHome() {
   const decor = makeDecor3D();
   decor.position.set(-3.3, 2.15, BZ + 0.06);
   homeScene.add(decor);
+  // Grok's furniture sets (content lane): her kitchen along the south
+  // wall, the baby's nursery corner in the south-east. Both animate
+  // through the shared content tickers the town tick drives.
+  if (typeof buildKitchenSet === "function") {
+    const tickers = homeRefs.contentTickers = homeRefs.contentTickers || [];
+    const kit = buildKitchenSet();
+    kit.position.set(-2.6, 0, 3.15); kit.rotation.y = Math.PI;
+    kit.traverse(o => { o.castShadow = true; });
+    homeScene.add(kit); tickers.push(kit);
+    const nur = buildNurserySet();
+    nur.position.set(3.35, 0, 2.35); nur.rotation.y = Math.PI;
+    nur.traverse(o => { o.castShadow = true; });
+    homeScene.add(nur); tickers.push(nur);
+  }
   const lamp = makeLamp3D();
   if (homeOpt.lamp === 0) lamp.position.set(-4.7, 0, -3.3);
   else if (homeOpt.lamp === 1) lamp.position.set(-4.55, 0, -0.1);
@@ -5309,6 +5355,7 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   errandId: () => { const e = errandHere(); return e ? e.id : null; },
   doErrand: () => doErrand(),
   partsFacts: () => ({ shelf: Object.assign({}, Parts.shelf), mail: Object.assign({}, Parts.mail), installing: Parts.installing ? Parts.installing.id : null, mailReady: mailReady(), shelfLine: partsShelfLine() }),
+  contentFacts: () => ({ mailbox: !!homeRefs.grokMailbox, tickers: (homeRefs.contentTickers || []).length }),
   partsOrder: (id) => orderPart(id),
   partsDeliver: () => { for (const k in Parts.mail) Parts.mail[k] = 0; },
   partsCollect: () => collectMail(),
@@ -5408,4 +5455,4 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
     return { tris: Math.round(tris), verts, geoMB: +(geoBytes / 1048576).toFixed(3),
       texMB: +(texBytes / 1048576).toFixed(2), totalMB: +(total / 1048576).toFixed(2) };
   },
-  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.7.0" });
+  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.8.0" });

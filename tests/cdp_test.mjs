@@ -204,6 +204,9 @@ try {
   const tf = await evalJs(`WOMB.townFacts()`);
   check('town: Charles City stands (doors ' + tf.doors + ', solids ' + tf.solids + ', traffic ' + tf.traffic + ')',
     tf.doors === 3 && tf.solids >= 41 && tf.belAir === true && tf.traffic === 2);
+  const cf = await evalJs(`WOMB.contentFacts()`);
+  check('content: Grok props + sets live (mailbox ' + cf.mailbox + ', tickers ' + cf.tickers + ')',
+    cf.mailbox === true && cf.tickers >= 10);
   const carAt = await evalJs(`WOMB.driveFacts().carPos`);
   await evalJs(`WOMB.momPlace(${carAt[0] + 1.6}, ${carAt[1]}); 'ok'`);
   await sleep(600);

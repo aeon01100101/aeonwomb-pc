@@ -1,4 +1,4 @@
-# Aeon Womb — for PC (v0.7.0)
+# Aeon Womb — for PC (v0.8.0)
 
 The Android womb explorer, rebuilt for PC in **real 3D** (WebGL via
 Three.js r149, vendored — no downloads, no build step, no internet
@@ -90,6 +90,20 @@ see, plus keyboard + mouse controls.
   crunchy nearest-neighbour pixels, flat facets, low-poly shapes,
   and the classic vertex wobble — corners snap to a grid, just like
   1995.
+
+## What's new in v0.8.0
+
+**The content lane arrives.** The town and her home are dressed
+with the first outside-built pieces, integrated and verified:
+her mailbox is a proper blue rural box whose red flag is wired
+to the parts mail (parcel in, flag up); Main Street gains a
+fire hydrant, benches, five street lamps and a phone booth; her
+house gains a real kitchen along the south wall and the baby's
+nursery corner — crib, dresser and rocking chair. Everything
+animates: flags sway, lamps flicker, the nursery mobile turns.
+(Built by the content lane; integrated + bench-verified by
+Muse: smoke test 6/6, content facts 12 live pieces, zero page
+errors.)
 
 ## What's new in v0.7.0
 
