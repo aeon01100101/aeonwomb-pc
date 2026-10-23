@@ -237,6 +237,18 @@ body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: #ff
   border: 2px solid rgba(216,178,94,0.65); border-radius: 16px; padding: 10px 20px 22px;
   color: #f3ead2; box-shadow: 0 8px 28px rgba(0,0,0,0.5); min-width: 520px; }
 #driveHud.hidden, #carPrompt.hidden { display: none; }
+#needsCard { position: absolute; left: 14px; top: 64px; z-index: 31; pointer-events: none;
+  background: rgba(26,20,24,0.82); border: 1.5px solid rgba(255,210,140,0.4); border-radius: 14px;
+  padding: 10px 14px; color: #ffe9c9; font-size: 14px; min-width: 216px; }
+#needsCard.hidden, #needPrompt.hidden { display: none; }
+.needRow { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.needRow > span:first-child { width: 96px; }
+.needBar { flex: 1; height: 10px; background: rgba(255,255,255,0.14); border-radius: 99px; overflow: hidden; }
+.needBar i { display: block; height: 100%; width: 80%; background: #7dc95f; border-radius: 99px; transition: width .4s; }
+.needRow b { color: #ffd873; }
+#needPrompt { position: absolute; left: 50%; bottom: 168px; transform: translateX(-50%);
+  background: rgba(26,20,24,0.88); color: #ffe9c9; border: 1.5px solid rgba(255,210,140,0.55);
+  padding: 9px 18px; border-radius: 999px; font-size: 16px; z-index: 31; pointer-events: none; }
 .dhMain { text-align: center; min-width: 86px; }
 .dhMain span { font-size: 44px; font-weight: 800; line-height: 1; color: #ffd873; }
 .dhMain small { display: block; font-size: 12px; letter-spacing: 2px; opacity: 0.75; }

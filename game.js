@@ -105,7 +105,7 @@ class WombWorld {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
-  bpmScale() { return 1.0 + 0.22 * this.wallSqueeze; }
+  bpmScale() { let s = 1.0 + 0.22 * this.wallSqueeze; try { const w = Math.min(Needs.hunger, Needs.thirst, Needs.rest, Needs.comfort); if (w < 40) s += (40 - w) * 0.004; } catch (e) { } return s; }
   setFetusMode(f) { this.fetusMode = f; this.loadLevel(this.levelIndex); }
   kick() {
     if (this.worldTime - this.lastYourKickAt < 0.8) return false;
@@ -1435,7 +1435,7 @@ loop();
 // debug/test handle (used by the CDP play-test)
 window.WOMB = { world, WombAudio, startGame, rebuildWorld, quitToMenu, setGfx,
   renderer: () => renderer, gfxMode: () => gfxMode, openQM, closeQM, qmOpen: () => qmOpen,
-  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.5.0",
+  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.6.0",
   packsEnabled: () => { try { return JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { return {}; } } };
 
 // launcher hand-off: a mode picked in launcher.html starts at once
@@ -2905,6 +2905,66 @@ function makePerson3D(dressC, skinC) {
   g.userData.arms = arms;
   return g;
 }
+// ---- her needs (v0.6.0, the My Summer Car layer): she gets
+// hungry, thirsty, tired and uncomfortable, and Charles City
+// feeds her — the Grocer's stocks her fridge, Doyle's cooks,
+// Betty's rolls are comfort on a plate, and home has the
+// fridge and the sofa. The baby feels it too (see bpmScale).
+const Needs = Object.assign({ hunger: 82, thirst: 78, rest: 85, comfort: 80, stock: 1 }, prefs.get("mom_needs", {}));
+let needsSaveT = 0, needsUiT = 0;
+const needWarned = {};
+function needsWorst() { return Math.min(Needs.hunger, Needs.thirst, Needs.rest, Needs.comfort); }
+function needSpeed() { const w = needsWorst(); return w < 12 ? 0.62 : w < 25 ? 0.8 : 1; }
+function saveNeeds() { prefs.set("mom_needs", Needs); }
+function addNeed(k, d) { Needs[k] = clamp(Needs[k] + d, 0, 100); }
+const ERRANDS = [
+  { id: "grocer", x: -6.8, z: 31.0, r: 2.9, prompt: "🛒 <b>E</b> — buy groceries at The Grocer's", run() { Needs.stock = Math.min(6, Needs.stock + 3); addNeed("thirst", 18); showHomeMessage("🛒 Groceries bagged — 3 meals for the fridge, and a cold soda for the walk home.", 3200); saveNeeds(); } },
+  { id: "diner", x: 7.6, z: 31.0, r: 2.9, prompt: "🍽 <b>E</b> — a hot meal at Doyle's Diner", run() { addNeed("hunger", 65); addNeed("thirst", 25); addNeed("comfort", 12); showHomeMessage("🍽 Meatloaf, mashed potatoes and sweet tea. Doyle waves from the grill.", 3200); saveNeeds(); } },
+  { id: "bakery", x: -14, z: 31.0, r: 2.9, prompt: "🥐 <b>E</b> — fresh rolls at Betty's Bakery", run() { addNeed("hunger", 28); addNeed("comfort", 16); showHomeMessage("🥐 Warm rolls, still steaming. Betty won't take a cent — 'for the baby,' she says.", 3200); saveNeeds(); } }
+];
+function errandHere() {
+  const mom = homeRefs.mom;
+  if (!mom || Drive.active) return null;
+  const p = mom.position;
+  if (homeRefs.town) for (const e of ERRANDS) if (Math.hypot(p.x - e.x, p.z - e.z) < e.r) return e;
+  const inHouse = homeRefs.town
+    ? (Math.abs(p.x) < 5.4 && Math.abs(p.z) < 3.9)
+    : (Math.abs(p.x) <= 5.0 && Math.abs(p.z) <= 3.5);
+  if (inHouse) {
+    if (homeRefs.town && Math.hypot(p.x + 3.7, p.z + 1.3) < 1.9)
+      return { id: "nap", prompt: "😴 <b>E</b> — nap on the sofa", run() { runBlink(() => { addNeed("rest", 55); addNeed("hunger", -6); addNeed("thirst", -8); showHomeMessage("😴 She dreams of a small face. The house is quiet and kind.", 3000); saveNeeds(); }, "😴 A little nap…"); } };
+    return { id: "fridge", prompt: Needs.stock > 0 ? "🍽 <b>E</b> — eat from the fridge (" + Needs.stock + " meal" + (Needs.stock > 1 ? "s" : "") + " left)" : "🧺 The fridge is empty — The Grocer's on Main Street can fix that", run() { if (Needs.stock > 0) { Needs.stock--; addNeed("hunger", 42); addNeed("thirst", 10); showHomeMessage("🍽 A proper meal from her own fridge. The baby approves — feel that kick?", 3000); saveNeeds(); } else showHomeMessage("🧺 Bare shelves, hon. Groceries are at The Grocer's, two blocks over.", 2600); } };
+  }
+  return null;
+}
+function doErrand() { const e = errandHere(); if (e) e.run(); }
+function needsTick(dt) {
+  const card = document.getElementById("needsCard");
+  if (view !== "home") { card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  Needs.hunger = clamp(Needs.hunger - dt * 0.0092, 0, 100);
+  Needs.thirst = clamp(Needs.thirst - dt * 0.0133, 0, 100);
+  Needs.rest = clamp(Needs.rest - dt * 0.0075, 0, 100);
+  Needs.comfort = clamp(Needs.comfort - dt * 0.005, 0, 100);
+  needsSaveT += dt; if (needsSaveT > 10) { needsSaveT = 0; saveNeeds(); }
+  for (const [k, label] of [["hunger", "🍞 She's hungry — food would help."], ["thirst", "🥤 She's thirsty — something to drink."], ["rest", "😴 She's worn out — a nap would do her good."], ["comfort", "🛋 She's uncomfortable — something cosy, or Betty's rolls."]]) {
+    if (Needs[k] < 22 && !needWarned[k]) { needWarned[k] = true; showHomeMessage(label, 2600); }
+    if (Needs[k] > 34) needWarned[k] = false;
+  }
+  needsUiT += dt;
+  if (needsUiT > 0.3) {
+    needsUiT = 0;
+    const e = errandHere();
+    const pr = document.getElementById("needPrompt");
+    if (e) { pr.innerHTML = e.prompt; pr.classList.remove("hidden"); } else pr.classList.add("hidden");
+    for (const [k, id] of [["hunger", "nbHunger"], ["thirst", "nbThirst"], ["rest", "nbRest"], ["comfort", "nbComfort"]]) {
+      const bar = document.getElementById(id);
+      bar.style.width = Needs[k].toFixed(0) + "%";
+      bar.style.background = Needs[k] < 22 ? "#d95f4b" : Needs[k] < 45 ? "#e0a83e" : "#7dc95f";
+    }
+    document.getElementById("nbStock").textContent = Needs.stock;
+  }
+}
 // ---- zones, KH1-style: her lot is one zone, the town is
 // another. Only the zone she stands in is loaded (rendered +
 // solid); crossing the property line runs the Blink and the
@@ -4295,8 +4355,8 @@ function moveCar(dt) {
 }
 function tryEnterCar() {
   const car = homeRefs.belAir, mom = homeRefs.mom;
-  if (!car || !mom || Drive.active || !homeRefs.town) return;
-  if (Math.hypot(mom.position.x - car.position.x, mom.position.z - car.position.z) > 3.1) return;
+  if (!car || !mom || Drive.active || !homeRefs.town) return false;
+  if (Math.hypot(mom.position.x - car.position.x, mom.position.z - car.position.z) > 3.1) return false;
   Drive.active = true;
   Drive.heading = car.rotation.y;
   Drive.steer = 0;
@@ -4309,6 +4369,7 @@ function tryEnterCar() {
   Drive.doorTarget = 1; Drive.doorHoldT = 1.15; // her door swings open, then shut
   drawGauges();
   showHomeMessage("🚗 You're in the Bel Air. ENTER starts her engine · G shifts · T resets the trip.", 3800);
+  return true;
 }
 function exitCar(force) {
   const car = homeRefs.belAir, mom = homeRefs.mom;
@@ -4378,7 +4439,7 @@ function cycleGear() {
 }
 window.addEventListener("keydown", e => {
   if (view !== "home" || e.repeat) return;
-  if (e.code === "KeyE") { if (Drive.active) exitCar(false); else tryEnterCar(); }
+  if (e.code === "KeyE") { if (Drive.active) exitCar(false); else if (!tryEnterCar()) doErrand(); }
   else if (Drive.active && e.code === "Enter") toggleIgnition();
   else if (Drive.active && e.code === "KeyG") cycleGear();
   else if (Drive.active && e.code === "KeyT") {
@@ -4845,6 +4906,8 @@ function exitHome() {
     saveCarPrefs();
   }
   document.getElementById("homeHud").classList.add("hidden");
+  document.getElementById("needsCard").classList.add("hidden");
+  document.getElementById("needPrompt").classList.add("hidden");
   document.getElementById("homePanel").classList.add("hidden");
   document.getElementById("startScreen").classList.remove("hidden");
   lullaby.pause();
@@ -4882,6 +4945,7 @@ function syncHome(t, dt) {
   if (homeRefs.townTick) homeRefs.townTick(t, dt);
   driveTick(t, dt);
   zoneTick();
+  needsTick(dt);
   if (Drive.active) return; // the Bel Air owns the camera now
   if (homeRefs.rigPose) homeRefs.rigPose(t);
   if (homeRefs.mom) {
@@ -4906,7 +4970,7 @@ function syncHome(t, dt) {
     if (Input.turn) fpYaw += Input.turn * 1.5 * dt;
     const mx = Input.moveX, mz = Input.moveZ;
     if (mx || mz) {
-      const l = Math.hypot(mx, mz), sp = 1.45 * dt / l;
+      const l = Math.hypot(mx, mz), sp = 1.45 * needSpeed() * dt / l;
       const sy = Math.sin(fpYaw), cy = Math.cos(fpYaw);
       const ox = mom.position.x, oz = mom.position.z;
       let nx = ox + (sy * mz - cy * mx) * sp;
@@ -5085,6 +5149,10 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   satsumaOn: () => !!Drive.satsumaOn,
   zoneFacts: () => ({ active: Zone.active, lotKids: homeRefs.lotG ? homeRefs.lotG.children.length : 0, townKids: homeRefs.townG ? homeRefs.townG.children.length : 0, lotVis: homeRefs.lotG ? homeRefs.lotG.visible : null, townVis: homeRefs.townG ? homeRefs.townG.visible : null }),
   forceZone: (z) => { Zone.active = z; applyZone(); },
+  needsFacts: () => ({ hunger: Needs.hunger, thirst: Needs.thirst, rest: Needs.rest, comfort: Needs.comfort, stock: Needs.stock, worst: needsWorst(), speed: needSpeed() }),
+  needsSet: (k, v) => { if (k in Needs) Needs[k] = v; },
+  errandId: () => { const e = errandHere(); return e ? e.id : null; },
+  doErrand: () => doErrand(),
   gearUp: () => { cycleGear(); return Drive.gear; },
   setFuel: g => { Drive.fuel = clamp(g, 0, 16); Drive.tripFuel = null; },
   carPlace: (x, z, h) => { const car = homeRefs.belAir; if (car) { car.position.set(x, 0.02, z); car.rotation.y = h || 0; Drive.heading = car.rotation.y; Drive.speed = 0; updateBelAirSolid(); } return !!car; },
@@ -5179,4 +5247,4 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
     return { tris: Math.round(tris), verts, geoMB: +(geoBytes / 1048576).toFixed(3),
       texMB: +(texBytes / 1048576).toFixed(2), totalMB: +(total / 1048576).toFixed(2) };
   },
-  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.5.0" });
+  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.6.0" });

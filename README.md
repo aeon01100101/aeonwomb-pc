@@ -1,4 +1,4 @@
-# Aeon Womb — for PC (v0.5.0)
+# Aeon Womb — for PC (v0.6.0)
 
 The Android womb explorer, rebuilt for PC in **real 3D** (WebGL via
 Three.js r149, vendored — no downloads, no build step, no internet
@@ -90,6 +90,29 @@ see, plus keyboard + mouse controls.
   crunchy nearest-neighbour pixels, flat facets, low-poly shapes,
   and the classic vertex wobble — corners snap to a grid, just like
   1995.
+
+## What's new in v0.6.0
+
+**Zones.** Her house, front yard and backyard are one home zone;
+Charles City is another. Only the zone she stands in is loaded —
+step off the lot and the Blink (a beat of black) loads the town
+in around her, car and all. Same world, honest loading.
+
+**Her needs — the My Summer Car layer, part 1.** A needs card
+(Hunger / Thirst / Rest / Comfort + fridge meals) drains over
+the day. The Grocer's stocks her fridge, Doyle's Diner cooks,
+Betty's rolls are comfort on a plate, and home has the fridge
+and a sofa nap — all on the E key, with a prompt that says what
+E does right where she's standing. Run her low and she slows
+down — and the baby feels it: her heartbeat in the womb runs
+faster until she's looked after.
+
+**The fleet grows.** The '56 Bel Air is now her real car when
+its pack is installed (the BeamNG mod's own model, bone-stock —
+doors, hood and steering all work), and a Satsuma E10 — the My
+Summer Car Datsun, same treatment — parks at the gas station.
+Cars are launcher packs: install what you want, load only what
+you play.
 
 ## What's new in v0.5.0
 
