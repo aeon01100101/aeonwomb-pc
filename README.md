@@ -1,4 +1,4 @@
-# Aeon Womb — for PC (v0.8.0)
+# Aeon Womb — for PC (v0.9.0)
 
 The Android womb explorer, rebuilt for PC in **real 3D** (WebGL via
 Three.js r149, vendored — no downloads, no build step, no internet
@@ -90,6 +90,19 @@ see, plus keyboard + mouse controls.
   crunchy nearest-neighbour pixels, flat facets, low-poly shapes,
   and the classic vertex wobble — corners snap to a grid, just like
   1995.
+
+## What's new in v0.9.0
+
+**The Lobby is the front door now.** The title screen no longer
+floats over the womb — it stands in a 3D waiting room (content
+lane build, integrated here): checkerboard floor, reception
+desk, armchairs, a plant by the window, and a wall clock that
+keeps your real time. The camera breathes a slow look around
+the room while you choose; one ceiling panel flickers now and
+then. This room is where multiplayer will live — the Player
+List and hosting arrive here next — and where the game's
+updates will ask "Stay idle or go to lobby?" when the Blink
+comes. Quitting to the title brings you back to the Lobby.
 
 ## What's new in v0.8.0
 

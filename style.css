@@ -76,6 +76,15 @@ body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: #ff
   border: 1px solid rgba(255, 170, 150, 0.28); border-radius: 20px;
   padding: 26px 30px 30px; box-shadow: 0 18px 60px rgba(0,0,0,0.6);
 }
+/* When the 3D Lobby stands behind the title (body.lobby-live), let
+   the room show: a whisper of a vignette instead of the dark-red
+   backdrop, and a slimmer, lighter card floating in the room. */
+body.lobby-live #startScreen {
+  background: radial-gradient(ellipse at 50% 42%, rgba(10, 4, 6, 0.06), rgba(10, 4, 6, 0.42) 82%);
+}
+body.lobby-live #startScreen .card {
+  width: min(600px, 92vw); background: rgba(24, 5, 9, 0.78);
+}
 .card h1 { font-size: 34px; font-weight: 800; letter-spacing: 0.2px; }
 .card h1 .pc { font-size: 17px; color: #ffb59f; font-weight: 600; }
 .card h2 { font-size: 15.5px; color: #ffb59f; margin: 20px 0 8px; font-weight: 700; }
@@ -269,6 +278,22 @@ body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: #ff
   border: 2px solid rgba(216,178,94,0.65); border-radius: 14px; padding: 12px 16px;
   color: #f3ead2; pointer-events: none; }
 #wearCard.hidden { display: none; }
+#partsCard { position: absolute; left: 50%; top: 90px; transform: translateX(-50%); z-index: 34; width: 430px;
+  background: linear-gradient(180deg, rgba(38,30,26,0.97), rgba(22,17,15,0.97));
+  border: 2px solid rgba(216,178,94,0.65); border-radius: 14px; padding: 14px 18px; color: #f3ead2; }
+#partsCard.hidden { display: none; }
+#partsCard h3 { margin: 0 0 10px; font-size: 17px; color: #ffd873; }
+.partRow { display: flex; align-items: center; gap: 10px; margin: 7px 0; font-size: 14px; }
+.partRow .pName { flex: 1; }
+.partRow .pState { opacity: 0.85; font-size: 13px; min-width: 108px; text-align: right; }
+.partRow button { background: #7a4a28; color: #ffe9c9; border: 1.5px solid rgba(255,210,140,0.6);
+  padding: 6px 14px; border-radius: 999px; font-size: 14px; cursor: pointer; }
+.partRow button:disabled { opacity: 0.45; cursor: default; }
+#partsClose { margin-top: 8px; }
+#partPrompt { position: absolute; left: 50%; bottom: 218px; transform: translateX(-50%);
+  background: rgba(26,20,24,0.88); color: #ffe9c9; border: 1.5px solid rgba(255,210,140,0.55);
+  padding: 9px 18px; border-radius: 999px; font-size: 16px; z-index: 31; pointer-events: none; }
+#partPrompt.hidden { display: none; }
 #wearCard h3 { margin: 0 0 8px; font-size: 16px; color: #ffd873; }
 .wcRow { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 4px 0; }
 .wcRow > span:first-child { width: 62px; opacity: 0.7; letter-spacing: 1px; font-size: 11px; }

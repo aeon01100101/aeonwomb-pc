@@ -108,6 +108,7 @@ try {
   await sleep(3500); // textures + backdrop orbit frames
   await shot('01-title.png');
   check('title screen visible', await evalJs(`!document.querySelector('#startScreen').classList.contains('hidden')`));
+  check('lobby: the waiting room stands behind the title', await evalJs(`WOMB.lobbyFacts().built`) === true);
 
   // ---- Mom mode: her home in 3D (both dwellings + decorate panel)
   await evalJs(`document.querySelector('#modeRow button[data-mode="2"]').click(); document.querySelector('#enterBtn').click(); 'ok'`);

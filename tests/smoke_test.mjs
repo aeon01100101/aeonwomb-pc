@@ -11,6 +11,7 @@ const FILES = {
   "http://womb.test/style.css": ["style.css", "text/css"],
   "http://womb.test/game.js": ["game.js", "text/javascript"],
   "http://womb.test/content-builders.js": ["content-builders.js", "text/javascript"],
+  "http://womb.test/lobby.js": ["lobby.js", "text/javascript"],
   "http://womb.test/assets/wall_texture.png": ["assets/wall_texture.png", "image/png"],
   "http://womb.test/assets/placenta_texture.png": ["assets/placenta_texture.png", "image/png"],
   "http://womb.test/assets/baby_skin.png": ["assets/baby_skin.png", "image/png"],
@@ -74,10 +75,12 @@ async function poll(fn, ms, label) {
 }
 await evalJs("localStorage.clear(); location.reload();");
 for (let i = 0; i < 60 && (await evalJs("typeof window.WOMB")) !== "object"; i++) await sleep(1500);
-await evalJs("WOMB.setGfx('budget'); WOMB.enterHome(); WOMB.trafficCalm(true);");
-await sleep(4000);
 let pass = 0, total = 0;
 const check = (name, ok) => { total++; if (ok) pass++; console.log((ok ? "PASS " : "FAIL ") + name); };
+const lf = await evalJs("WOMB.lobbyFacts()");
+check("smoke: lobby stands behind the title", lf.built === true && lf.menuUp === true);
+await evalJs("WOMB.setGfx('budget'); WOMB.enterHome(); WOMB.trafficCalm(true);");
+await sleep(4000);
 check("smoke: page loads, WOMB alive", true);
 const tf = await evalJs("WOMB.townFacts()");
 check("smoke: town builds (solids " + tf.solids + ")", tf.town === true && tf.solids >= 41 && tf.traffic === 2);

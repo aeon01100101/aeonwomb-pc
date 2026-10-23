@@ -1232,6 +1232,7 @@ function syncVisuals(t) {
 let lastNow = performance.now(), hintAt = 0;
 // Which world the loop draws: the womb, or Mom's house (PC v0.2).
 let view = "womb"; // "womb" | "home"
+let lobbyScene = null, lobbyCam = null, lobbyClock = null, lobbyFlicker = null, lobbyAspect = 0;
 let homeScene = null, homeRefs = {};
 function loop() {
   requestAnimationFrame(loop);
@@ -1301,7 +1302,13 @@ function loop() {
     refreshSelfCord(t);
     drawMinimap();
   }
-  if (view === "home" && homeScene) {
+  const menuUp = !$("startScreen").classList.contains("hidden");
+  if (menuUp && lobbyScene) {
+    tickLobby(t);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.render(lobbyScene, lobbyCam);
+  } else if (view === "home" && homeScene) {
     syncHome(t, dt);
     renderMirror();
     renderer.toneMapping = THREE.ACESFilmicToneMapping; // the home/town gets the filmic coat; the womb keeps its proven look
@@ -1435,8 +1442,45 @@ loop();
 // debug/test handle (used by the CDP play-test)
 window.WOMB = { world, WombAudio, startGame, rebuildWorld, quitToMenu, setGfx,
   renderer: () => renderer, gfxMode: () => gfxMode, openQM, closeQM, qmOpen: () => qmOpen,
-  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.8.0",
+  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.9.0",
   packsEnabled: () => { try { return JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { return {}; } } };
+
+// ------------------------------------------------------------ the Lobby
+// The waiting room the title screen lives in (content lane: Claude's
+// buildLobby, wired in here). While the menu is up, the loop renders
+// the lobby instead of the womb: she "stands" at the door, the camera
+// breathes a slow look around the room, the wall clock keeps real
+// time, and one ceiling panel flickers now and then.
+// (State vars live up by `let view` — the loop starts before this
+// section of the file executes.)
+function buildLobbyScene() {
+  if (lobbyScene || typeof buildLobby !== "function") return;
+  lobbyScene = new THREE.Scene();
+  lobbyScene.background = new THREE.Color(0x241f1a);
+  const g = buildLobby();
+  lobbyScene.add(g);
+  lobbyClock = g.userData.clock || null;
+  lobbyFlicker = g.userData.flicker || null;
+  lobbyCam = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.05, 60);
+  lobbyCam.position.set(1.6, 1.58, 3.15);
+  document.body.classList.add("lobby-live");
+}
+function tickLobby(t) {
+  if (!lobbyScene) return;
+  const a = innerWidth / innerHeight;
+  if (Math.abs(a - lobbyAspect) > 0.001) { lobbyAspect = a; lobbyCam.aspect = a; lobbyCam.updateProjectionMatrix(); }
+  lobbyCam.lookAt(-0.4 + Math.sin(t * 0.07) * 1.3, 1.12 + Math.sin(t * 0.13) * 0.09, -3.5);
+  if (lobbyClock) {
+    const d = new Date(), m = d.getMinutes() + d.getSeconds() / 60, h = (d.getHours() % 12) + m / 60;
+    if (lobbyClock.minute) lobbyClock.minute.rotation.z = -(m / 60) * Math.PI * 2;
+    if (lobbyClock.hour) lobbyClock.hour.rotation.z = -(h / 12) * Math.PI * 2;
+  }
+  if (lobbyFlicker) for (const mat of lobbyFlicker) {
+    if (mat.userData.base === undefined) mat.userData.base = mat.emissiveIntensity || 1;
+    mat.emissiveIntensity = mat.userData.base * (0.97 + Math.sin(t * 43 + mat.id) * 0.015) - (Math.random() < 0.006 ? 0.3 : 0);
+  }
+}
+buildLobbyScene();
 
 // launcher hand-off: a mode picked in launcher.html starts at once
 try {
@@ -5356,6 +5400,7 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   doErrand: () => doErrand(),
   partsFacts: () => ({ shelf: Object.assign({}, Parts.shelf), mail: Object.assign({}, Parts.mail), installing: Parts.installing ? Parts.installing.id : null, mailReady: mailReady(), shelfLine: partsShelfLine() }),
   contentFacts: () => ({ mailbox: !!homeRefs.grokMailbox, tickers: (homeRefs.contentTickers || []).length }),
+  lobbyFacts: () => ({ built: !!lobbyScene, menuUp: !$("startScreen").classList.contains("hidden") }),
   partsOrder: (id) => orderPart(id),
   partsDeliver: () => { for (const k in Parts.mail) Parts.mail[k] = 0; },
   partsCollect: () => collectMail(),
@@ -5455,4 +5500,4 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
     return { tris: Math.round(tris), verts, geoMB: +(geoBytes / 1048576).toFixed(3),
       texMB: +(texBytes / 1048576).toFixed(2), totalMB: +(total / 1048576).toFixed(2) };
   },
-  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.8.0" });
+  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.9.0" });
