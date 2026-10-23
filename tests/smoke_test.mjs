@@ -12,6 +12,7 @@ const FILES = {
   "http://womb.test/game.js": ["game.js", "text/javascript"],
   "http://womb.test/content-builders.js": ["content-builders.js", "text/javascript"],
   "http://womb.test/lobby.js": ["lobby.js", "text/javascript"],
+  "http://womb.test/content-registry.js": ["content-registry.js", "text/javascript"],
   "http://womb.test/assets/wall_texture.png": ["assets/wall_texture.png", "image/png"],
   "http://womb.test/assets/placenta_texture.png": ["assets/placenta_texture.png", "image/png"],
   "http://womb.test/assets/baby_skin.png": ["assets/baby_skin.png", "image/png"],
@@ -85,7 +86,7 @@ check("smoke: page loads, WOMB alive", true);
 const tf = await evalJs("WOMB.townFacts()");
 check("smoke: town builds (solids " + tf.solids + ")", tf.town === true && tf.solids >= 41 && tf.traffic === 2);
 const cf = await evalJs("WOMB.contentFacts()");
-check("smoke: content live (tickers " + cf.tickers + ")", cf.mailbox === true && cf.tickers >= 10);
+check("smoke: content live (tickers " + cf.tickers + ", placed " + cf.placed + ")", cf.mailbox === true && cf.tickers >= 10 && cf.placed >= 11);
 const rig = await evalJs("WOMB.momRig()");
 check("smoke: mom rig 182 bones", !!rig && rig.bones === 182);
 const cp = (await facts()).carPos;

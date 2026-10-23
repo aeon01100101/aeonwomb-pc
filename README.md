@@ -1,4 +1,4 @@
-# Aeon Womb — for PC (v0.9.0)
+# Aeon Womb — for PC (v0.10.0)
 
 The Android womb explorer, rebuilt for PC in **real 3D** (WebGL via
 Three.js r149, vendored — no downloads, no build step, no internet
@@ -90,6 +90,18 @@ see, plus keyboard + mouse controls.
   crunchy nearest-neighbour pixels, flat facets, low-poly shapes,
   and the classic vertex wobble — corners snap to a grid, just like
   1995.
+
+## What's new in v0.10.0
+
+**The content registry.** Outside-built pieces no longer need
+hand-wiring into the game. Each one declares itself once in
+`content-registry.js` — its builder, its spot, its collision
+box — and the game builds, places, collides and animates it
+automatically. All twelve current pieces (mailbox excepted;
+its flag belongs to the mail system) moved onto the registry
+with zero visible change: same town, same kitchen, same
+nursery, same 46 collision boxes. From here on, a content
+delivery integrates in minutes instead of an hour of surgery.
 
 ## What's new in v0.9.0
 

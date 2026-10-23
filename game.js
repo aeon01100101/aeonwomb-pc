@@ -1442,7 +1442,7 @@ loop();
 // debug/test handle (used by the CDP play-test)
 window.WOMB = { world, WombAudio, startGame, rebuildWorld, quitToMenu, setGfx,
   renderer: () => renderer, gfxMode: () => gfxMode, openQM, closeQM, qmOpen: () => qmOpen,
-  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.9.0",
+  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.10.0",
   packsEnabled: () => { try { return JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { return {}; } } };
 
 // ------------------------------------------------------------ the Lobby
@@ -3209,27 +3209,38 @@ function zoneTick() {
     setTimeout(() => { Zone.busy = false; }, 850);
   }
 }
-// ---- Grok's content (content lane), wired in: town dressing props.
-// Every builder self-animates via userData.tick(t, dt); the town tick
-// drives them all. Placements keep the traffic lanes clear: lamps,
-// benches and the phone booth hug the storefront sidewalk (z ~31+).
-function addContentProps(T, solid) {
-  if (typeof buildFireHydrant !== "function") return; // content file absent
+// ---- Content registry placement (see content-registry.js).
+// Every outside-built piece declares itself as data; this is the
+// only wiring it ever needs: build it, stand it at its spot, give
+// it its collision box, and tick its animation from the town tick.
+// Town pieces are placed before the zone partition, so they are
+// zoned with everything else; placements keep the traffic lanes
+// clear (lamps, benches and the booth hug the storefront sidewalk).
+function placeContent(sceneName, T, solid) {
+  let placed = 0;
+  if (typeof CONTENT_REGISTRY === "undefined") return 0;
   const tickers = homeRefs.contentTickers = homeRefs.contentTickers || [];
-  const add = (g, x, z, ry, sb) => {
-    g.position.set(x, 0, z); if (ry) g.rotation.y = ry;
-    g.traverse(o => { o.castShadow = true; });
-    T.add(g);
-    if (g.userData && g.userData.tick) tickers.push(g);
-    if (sb) solid(sb[0], sb[1], sb[2], sb[3]);
-    return g;
-  };
+  for (const e of CONTENT_REGISTRY) {
+    if (e.scene !== sceneName) continue;
+    const fn = window[e.builder];
+    if (typeof fn !== "function") continue; // builder not delivered yet
+    for (const spot of (e.copies || [e.at])) {
+      const g = fn();
+      g.position.set(spot[0], 0, spot[1]);
+      if (e.ry) g.rotation.y = e.ry;
+      g.traverse(o => { o.castShadow = true; });
+      (T || homeScene).add(g);
+      if (g.userData && g.userData.tick) tickers.push(g);
+      if (solid && e.solidSize) solid(spot[0] - e.solidSize[0] / 2, spot[0] + e.solidSize[0] / 2, spot[1] - e.solidSize[1] / 2, spot[1] + e.solidSize[1] / 2);
+      placed++;
+    }
+  }
+  return placed;
+}
+function addContentProps(T, solid) {
+  const tickers = homeRefs.contentTickers = homeRefs.contentTickers || [];
   if (homeRefs.grokMailbox && homeRefs.grokMailbox.userData.tick) tickers.push(homeRefs.grokMailbox);
-  add(buildFireHydrant(), -22.5, 31.5, 0, [-22.7, -22.3, 31.3, 31.7]);
-  add(buildParkBench(), -11, 31.3, Math.PI, [-11.9, -10.1, 31.0, 31.6]);
-  add(buildParkBench(), 17.5, 31.3, Math.PI, [16.6, 18.4, 31.0, 31.6]);
-  for (const lx of [-20, -10, 0, 10, 20]) add(buildStreetLamp(), lx, 31.6, 0);
-  add(buildPhoneBooth(), 11.8, 31.2, Math.PI, [11.4, 12.2, 30.8, 31.6]);
+  homeRefs.contentPlaced = placeContent("town", T, solid);
 }
 
 function buildTown() {
@@ -4142,20 +4153,10 @@ function buildHome() {
   const decor = makeDecor3D();
   decor.position.set(-3.3, 2.15, BZ + 0.06);
   homeScene.add(decor);
-  // Grok's furniture sets (content lane): her kitchen along the south
-  // wall, the baby's nursery corner in the south-east. Both animate
-  // through the shared content tickers the town tick drives.
-  if (typeof buildKitchenSet === "function") {
-    const tickers = homeRefs.contentTickers = homeRefs.contentTickers || [];
-    const kit = buildKitchenSet();
-    kit.position.set(-2.6, 0, 3.15); kit.rotation.y = Math.PI;
-    kit.traverse(o => { o.castShadow = true; });
-    homeScene.add(kit); tickers.push(kit);
-    const nur = buildNurserySet();
-    nur.position.set(3.35, 0, 2.35); nur.rotation.y = Math.PI;
-    nur.traverse(o => { o.castShadow = true; });
-    homeScene.add(nur); tickers.push(nur);
-  }
+  // Content-lane furniture (see content-registry.js): her kitchen
+  // along the south wall, the baby's nursery corner in the
+  // south-east — placed and animated by the registry, no hand-wiring.
+  homeRefs.contentPlacedHome = placeContent("home", null, null);
   const lamp = makeLamp3D();
   if (homeOpt.lamp === 0) lamp.position.set(-4.7, 0, -3.3);
   else if (homeOpt.lamp === 1) lamp.position.set(-4.55, 0, -0.1);
@@ -5399,7 +5400,7 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   errandId: () => { const e = errandHere(); return e ? e.id : null; },
   doErrand: () => doErrand(),
   partsFacts: () => ({ shelf: Object.assign({}, Parts.shelf), mail: Object.assign({}, Parts.mail), installing: Parts.installing ? Parts.installing.id : null, mailReady: mailReady(), shelfLine: partsShelfLine() }),
-  contentFacts: () => ({ mailbox: !!homeRefs.grokMailbox, tickers: (homeRefs.contentTickers || []).length }),
+  contentFacts: () => ({ mailbox: !!homeRefs.grokMailbox, tickers: (homeRefs.contentTickers || []).length, placed: (homeRefs.contentPlaced || 0) + (homeRefs.contentPlacedHome || 0) }),
   lobbyFacts: () => ({ built: !!lobbyScene, menuUp: !$("startScreen").classList.contains("hidden") }),
   partsOrder: (id) => orderPart(id),
   partsDeliver: () => { for (const k in Parts.mail) Parts.mail[k] = 0; },
@@ -5500,4 +5501,4 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
     return { tris: Math.round(tris), verts, geoMB: +(geoBytes / 1048576).toFixed(3),
       texMB: +(texBytes / 1048576).toFixed(2), totalMB: +(total / 1048576).toFixed(2) };
   },
-  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.9.0" });
+  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.10.0" });
