@@ -1435,7 +1435,7 @@ loop();
 // debug/test handle (used by the CDP play-test)
 window.WOMB = { world, WombAudio, startGame, rebuildWorld, quitToMenu, setGfx,
   renderer: () => renderer, gfxMode: () => gfxMode, openQM, closeQM, qmOpen: () => qmOpen,
-  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.6.0",
+  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.7.0",
   packsEnabled: () => { try { return JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { return {}; } } };
 
 // launcher hand-off: a mode picked in launcher.html starts at once
@@ -2937,7 +2937,13 @@ function errandHere() {
   }
   return null;
 }
-function doErrand() { const e = errandHere(); if (e) e.run(); }
+function doErrand() {
+  const e = errandHere(); if (e) { e.run(); return; }
+  const mom = homeRefs.mom; if (!mom || Drive.active) return;
+  const px = mom.position.x, pz = mom.position.z;
+  if (homeRefs.town && Math.hypot(px - 0.4, pz - 31.0) < 2.9) { openPartsCard(); return; }
+  if (Math.hypot(px - 7.4, pz - 12.6) < 2.2 && mailReady()) collectMail();
+}
 function needsTick(dt) {
   const card = document.getElementById("needsCard");
   if (view !== "home") { card.classList.add("hidden"); return; }
@@ -2965,6 +2971,135 @@ function needsTick(dt) {
     document.getElementById("nbStock").textContent = Needs.stock;
   }
 }
+// ---- car parts by mail (v0.7.0, the My Summer Car layer,
+// part 2): parts wear out; the station only services them.
+// Real fixes are components — ordered at the Post Office,
+// delivered to her home mailbox (watch the red flag), and
+// fitted at the car with the wrench key (R), hood up.
+const PARTS = [
+  { id: "battery", icon: "🔋", name: "Battery", fixes: "bat", blurb: "cranks strong again" },
+  { id: "plugs", icon: "🔌", name: "Spark plugs · set of 6", fixes: "plugs", blurb: "smooth idle, easy starts" },
+  { id: "brakes", icon: "🛑", name: "Brake shoes · set", fixes: "brk", blurb: "stops straight and short" },
+  { id: "tires", icon: "🛞", name: "Whitewall tires · set of 4", fixes: "tir", blurb: "grip in the corners" },
+  { id: "generator", icon: "⚡", name: "Rebuilt generator", fixes: "gen", blurb: "charges like new" },
+  { id: "enginekit", icon: "🔩", name: "Engine rebuild kit", fixes: "eng", blurb: "rings, gaskets, bearings" },
+  { id: "gearbox", icon: "⚙️", name: "Powerglide rebuild kit", fixes: "trn", blurb: "shifts without the bang" }
+];
+const Parts = Object.assign({ shelf: {}, mail: {}, notified: {} }, prefs.get("belair_parts", {}));
+Parts.installing = null;
+const MAIL_MS = 120000; // the mail takes a couple of minutes
+function saveParts() { prefs.set("belair_parts", { shelf: Parts.shelf, mail: Parts.mail, notified: Parts.notified }); }
+function partById(id) { return PARTS.find(p => p.id === id); }
+function mailDue(id) { return Parts.mail[id] != null && Date.now() >= Parts.mail[id]; }
+function mailReady() { return PARTS.some(p => mailDue(p.id)); }
+function partsShelfLine() {
+  const bits = PARTS.filter(p => Parts.shelf[p.id] > 0).map(p => p.icon + "×" + Parts.shelf[p.id]);
+  const inMail = PARTS.filter(p => Parts.mail[p.id]).map(p => p.icon);
+  return "Parts shelf: " + (bits.length ? bits.join(" ") : "empty") + (inMail.length ? " · 📮 in the mail: " + inMail.join(" ") : "") + " — order at the Post Office";
+}
+function orderPart(id) {
+  const p = partById(id); if (!p || Parts.mail[id]) return;
+  Parts.mail[id] = Date.now() + MAIL_MS;
+  Parts.notified[id] = false;
+  saveParts(); refreshPartsCard();
+  showHomeMessage("📬 Ordered: " + p.name + ". The mail runs slow — watch the home mailbox flag.", 3400);
+}
+function collectMail() {
+  let got = 0;
+  for (const p of PARTS) if (mailDue(p.id)) {
+    delete Parts.mail[p.id]; delete Parts.notified[p.id];
+    Parts.shelf[p.id] = (Parts.shelf[p.id] || 0) + 1; got++;
+  }
+  if (got) { saveParts(); showHomeMessage("📦 Parcel" + (got > 1 ? "s" : "") + " on the parts shelf. Fit " + (got > 1 ? "them" : "it") + " at the car — hood up, press R.", 3400); }
+  return got;
+}
+function bestInstall() {
+  let best = null;
+  for (const p of PARTS) if ((Parts.shelf[p.id] || 0) > 0) {
+    const w = Drive.wear[p.fixes] ?? 1;
+    if (w < 0.985 && (!best || w < best.w)) best = { p, w };
+  }
+  return best;
+}
+function startInstall() {
+  if (Drive.active || Parts.installing) return;
+  const car = homeRefs.belAir, mom = homeRefs.mom;
+  if (!car || !mom) return;
+  if (Math.hypot(mom.position.x - car.position.x, mom.position.z - car.position.z) > 3.6) return;
+  const b = bestInstall();
+  if (!b) { showHomeMessage("🔧 Nothing on the shelf needs fitting — she's running sweet, or the shelf is bare. Parts live at the Post Office.", 2600); return; }
+  Parts.installing = { id: b.p.id, t: 0 };
+  Drive.hoodOpen = true;
+  showHomeMessage("🔧 Fitting the " + b.p.name.toLowerCase() + "… hold still, hon.", 1800);
+}
+function refreshPartsCard() {
+  const rows = document.getElementById("partsRows");
+  if (!rows) return;
+  rows.innerHTML = "";
+  for (const p of PARTS) {
+    const row = document.createElement("div"); row.className = "partRow";
+    const w = Math.round((Drive.wear[p.fixes] ?? 1) * 100);
+    const inMail = !!Parts.mail[p.id], onShelf = Parts.shelf[p.id] || 0;
+    row.innerHTML = "<span class='pName'>" + p.icon + " " + p.name + "</span>" +
+      "<span class='pState'>" + (inMail ? "📮 in the mail…" : onShelf ? "on your shelf ×" + onShelf : p.blurb) + " · now " + w + "%</span>";
+    const btn = document.createElement("button");
+    btn.textContent = inMail ? "Ordered" : "Order";
+    btn.disabled = inMail;
+    btn.addEventListener("click", () => orderPart(p.id));
+    row.appendChild(btn);
+    rows.appendChild(row);
+  }
+}
+function openPartsCard() { refreshPartsCard(); document.getElementById("partsCard").classList.remove("hidden"); }
+function closePartsCard() { document.getElementById("partsCard").classList.add("hidden"); }
+let partsUiT = 0;
+function partsTick(dt) {
+  // parcel arrivals raise the flag and say so, once each
+  for (const p of PARTS) if (mailDue(p.id) && !Parts.notified[p.id]) {
+    Parts.notified[p.id] = true; saveParts();
+    if (view === "home") showHomeMessage("📬 The mail's come — a parcel's waiting at home, flag's up.", 3200);
+  }
+  if (homeRefs.mailFlag) {
+    const target = mailReady() ? -0.15 : 1.25;
+    homeRefs.mailFlag.rotation.z += (target - homeRefs.mailFlag.rotation.z) * Math.min(1, dt * 5);
+  }
+  const mom = homeRefs.mom, car = homeRefs.belAir;
+  // an install in progress: she must stay by the car
+  if (Parts.installing) {
+    const p = partById(Parts.installing.id);
+    const near = mom && car && Math.hypot(mom.position.x - car.position.x, mom.position.z - car.position.z) < 4.2 && !Drive.active;
+    if (!near) { Parts.installing = null; Drive.hoodOpen = false; showHomeMessage("🔧 She steps away — the " + p.name.toLowerCase() + " will keep.", 2000); }
+    else {
+      Parts.installing.t += dt;
+      if (Parts.installing.t >= 2.5) {
+        Drive.wear[p.fixes] = 1;
+        Parts.shelf[p.id]--;
+        Parts.installing = null;
+        Drive.hoodOpen = false;
+        saveCarPrefs(); saveParts();
+        showHomeMessage("🔧 New " + p.name.toLowerCase() + " fitted — " + p.blurb + ".", 3000);
+      }
+    }
+  }
+  partsUiT += dt;
+  if (partsUiT > 0.3) {
+    partsUiT = 0;
+    const pr = document.getElementById("partPrompt");
+    let html = "";
+    if (view === "home" && mom && !Drive.active) {
+      const px = mom.position.x, pz = mom.position.z;
+      if (Parts.installing) html = "🔧 Fitting the " + partById(Parts.installing.id).name.toLowerCase() + "… " + Math.round(Parts.installing.t / 2.5 * 100) + "%";
+      else if (homeRefs.town && Math.hypot(px - 0.4, pz - 31.0) < 2.9) html = "📬 <b>E</b> — order car parts by mail";
+      else if (Math.hypot(px - 7.4, pz - 12.6) < 2.2) html = mailReady() ? "📬 <b>E</b> — collect your parcel" : (PARTS.some(p => Parts.mail[p.id]) ? "📬 Parts in the mail — due soon" : "");
+      else if (car && Math.hypot(px - car.position.x, pz - car.position.z) < 3.6) { const b = bestInstall(); if (b) html = "🔧 <b>R</b> — fit the " + b.p.name.toLowerCase() + " from the shelf (" + Math.round(b.w * 100) + "% now)"; }
+      // the order card closes itself when she walks away
+      const card = document.getElementById("partsCard");
+      if (card && !card.classList.contains("hidden") && !(homeRefs.town && Math.hypot(px - 0.4, pz - 31.0) < 4.5)) closePartsCard();
+    }
+    if (html) { pr.innerHTML = html; pr.classList.remove("hidden"); } else pr.classList.add("hidden");
+  }
+}
+{ const pc = document.getElementById("partsClose"); if (pc) pc.addEventListener("click", closePartsCard); }
 // ---- zones, KH1-style: her lot is one zone, the town is
 // another. Only the zone she stands in is loaded (rendered +
 // solid); crossing the property line runs the Blink and the
@@ -3060,6 +3195,20 @@ function buildTown() {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8), new THREE.MeshStandardMaterial({ map: leafTexture(), roughness: 1 }));
     b.castShadow = true;
     b.scale.set(1.2, 0.7, 0.8); b.position.set(bx, 0.32, 4.6); T.add(b);
+  }
+  { // her mailbox, by the street — the red flag means a parcel
+    const mb = new THREE.Group();
+    mb.add(box(0.09, 1.02, 0.09, stdPlain(0x7a4a28, 0.85), 0, 0.51, 0));
+    mb.add(box(0.58, 0.27, 0.30, stdPlain(0x3f5a74, 0.55), 0, 1.13, 0));
+    const flagPivot = new THREE.Group(); flagPivot.position.set(0.31, 1.13, 0);
+    flagPivot.add(box(0.03, 0.30, 0.02, stdPlain(0xc22e22, 0.5), 0, 0.13, 0));
+    flagPivot.rotation.z = 1.25; // down: no mail
+    mb.add(flagPivot);
+    mb.position.set(7.4, 0, 12.6); mb.rotation.y = -0.12;
+    mb.traverse(o => { o.castShadow = true; });
+    T.add(mb);
+    homeRefs.mailFlag = flagPivot;
+    solid(7.15, 7.65, 12.45, 12.75);
   }
   solid(-5.5, 0.55, 3.9, 4.1); solid(1.85, 5.5, 3.9, 4.1);       // front wall
   solid(-5.5, -3.55, -4.1, -3.9); solid(-2.25, 5.5, -4.1, -3.9); // back wall
@@ -4155,9 +4304,9 @@ function setGestures(on) { if (on) Gesture.start(); else Gesture.stop(); }
 function loadWear() {
   try {
     const w = JSON.parse(prefs.get("belair_wear", ""));
-    if (w && typeof w.eng === "number") return w;
+    if (w && typeof w.eng === "number") { if (typeof w.gen !== "number") w.gen = 0.9; return w; }
   } catch (e) { }
-  return { eng: 0.92, trn: 0.90, brk: 0.88, tir: 0.85, bat: 0.90, oilMi: 640, plugs: 0.90 };
+  return { eng: 0.92, trn: 0.90, brk: 0.88, tir: 0.85, bat: 0.90, oilMi: 640, plugs: 0.90, gen: 0.90 };
 }
 const oilHealth = () => clamp(1 - Drive.wear.oilMi / 3000, 0, 1);
 const brakePower = () => 3.6 * (0.5 + 0.5 * Drive.wear.brk) * (0.72 + 0.28 * Drive.wear.tir);
@@ -4351,6 +4500,7 @@ function moveCar(dt) {
   Drive.odo += moved / 1609.34;
   Drive.trip += moved / 1609.34;
   Drive.wear.oilMi += moved / 1609.34;
+  Drive.wear.gen = Math.max(0.05, (Drive.wear.gen ?? 1) - moved * 1.0e-7); // the generator wears too, slowly
   Drive.wear.tir = Math.max(0.05, Drive.wear.tir - moved * 4.5e-7 * (1 + Math.abs(Drive.steer) * clamp(Math.abs(Drive.speed) / 8, 0, 1) * 2)); // miles and corners wear the whitewalls down
 }
 function tryEnterCar() {
@@ -4440,6 +4590,7 @@ function cycleGear() {
 window.addEventListener("keydown", e => {
   if (view !== "home" || e.repeat) return;
   if (e.code === "KeyE") { if (Drive.active) exitCar(false); else if (!tryEnterCar()) doErrand(); }
+  else if (e.code === "KeyR" && !Drive.active) startInstall();
   else if (Drive.active && e.code === "Enter") toggleIgnition();
   else if (Drive.active && e.code === "KeyG") cycleGear();
   else if (Drive.active && e.code === "KeyT") {
@@ -4716,7 +4867,7 @@ function driveTick(t, dt) {
     let amps = 0;
     if (Drive.engine === "crank") amps -= 175;                       // the starter drinks hard
     if (Drive.engine === "on") {
-      amps += clamp((Drive.rpm - 850) / 5800, 0, 1) * 36 * (0.7 + 0.3 * Drive.wear.eng); // the generator gives back
+      amps += clamp((Drive.rpm - 850) / 5800, 0, 1) * 36 * (0.7 + 0.3 * Drive.wear.eng) * (0.5 + 0.5 * (Drive.wear.gen ?? 1)); // the generator gives back — less when it's worn
       amps -= 3.5;                                                   // ignition
     }
     if (E.lights) amps -= 9;
@@ -4852,11 +5003,12 @@ function driveTick(t, dt) {
       $("dhWear").textContent = wearGrade(Math.min(Drive.wear.eng, Drive.wear.trn, Drive.wear.brk, Drive.wear.tir, Drive.wear.bat));
       const wc = document.getElementById("wearCard");
       if (wc && !wc.classList.contains("hidden")) {
-        for (const [id, v] of [["wcEng", Drive.wear.eng], ["wcTrn", Drive.wear.trn], ["wcBrk", Drive.wear.brk], ["wcTir", Drive.wear.tir], ["wcBat", Drive.wear.bat], ["wcPlu", Drive.wear.plugs]]) {
+        for (const [id, v] of [["wcEng", Drive.wear.eng], ["wcTrn", Drive.wear.trn], ["wcBrk", Drive.wear.brk], ["wcTir", Drive.wear.tir], ["wcBat", Drive.wear.bat], ["wcPlu", Drive.wear.plugs], ["wcGen", Drive.wear.gen ?? 1]]) {
           const b = document.getElementById(id + "B"), tx = document.getElementById(id);
           if (b) b.style.width = Math.round(v * 100) + "%";
           if (tx) tx.textContent = wearGrade(v) + " · " + Math.round(v * 100) + "%";
         }
+        $("wcParts").textContent = partsShelfLine();
         $("wcOil").textContent = "Oil: " + Math.round(oilHealth() * 100) + "% life · " + Math.round(Drive.wear.oilMi) + " mi since her last change";
         $("wcElec").textContent = "Battery: " + Drive.elec.volts.toFixed(1) + " V · " + (Drive.elec.amps >= 0 ? "+" : "") + Drive.elec.amps.toFixed(0) + " A · charge " + Math.round(Drive.elec.charge * 100) + "% · " + (Drive.elec.lights ? "lights ON" : "lights off");
       }
@@ -4908,6 +5060,8 @@ function exitHome() {
   document.getElementById("homeHud").classList.add("hidden");
   document.getElementById("needsCard").classList.add("hidden");
   document.getElementById("needPrompt").classList.add("hidden");
+  document.getElementById("partsCard").classList.add("hidden");
+  document.getElementById("partPrompt").classList.add("hidden");
   document.getElementById("homePanel").classList.add("hidden");
   document.getElementById("startScreen").classList.remove("hidden");
   lullaby.pause();
@@ -4946,6 +5100,7 @@ function syncHome(t, dt) {
   driveTick(t, dt);
   zoneTick();
   needsTick(dt);
+  partsTick(dt);
   if (Drive.active) return; // the Bel Air owns the camera now
   if (homeRefs.rigPose) homeRefs.rigPose(t);
   if (homeRefs.mom) {
@@ -5118,7 +5273,7 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   doorState: () => homeRefs.doors ? homeRefs.doors.map(d => +d.ang.toFixed(2)) : [],
   driveFacts: () => ({ active: Drive.active, engine: Drive.engine, gear: Drive.gear, auto: Drive.auto, mph: +(Math.abs(Drive.speed) * 2.23694).toFixed(1), rpm: Math.round(Drive.rpm), fuel: +Drive.fuel.toFixed(3), trip: +Drive.trip.toFixed(3), mpg: tripMpg() ? +tripMpg().toFixed(1) : null, carPos: homeRefs.belAir ? [+homeRefs.belAir.position.x.toFixed(1), +homeRefs.belAir.position.z.toFixed(1)] : null, carb: Drive.carb, choke: Drive.choke, temp: +Drive.temp.toFixed(2), throttle: +Drive.throttle.toFixed(2), gph: +Drive.lastGph.toFixed(2), shifts: Drive.shifts, hardShifts: Drive.hardShifts, varThrottle: Drive.varThrottle, mouseThrottle: +Drive.mouseThrottle.toFixed(2),
     amps: +Drive.elec.amps.toFixed(1), volts: +Drive.elec.volts.toFixed(2), charge: +Drive.elec.charge.toFixed(3), lights: Drive.elec.lights,
-    wear: { eng: +Drive.wear.eng.toFixed(3), trn: +Drive.wear.trn.toFixed(3), brk: +Drive.wear.brk.toFixed(3), tir: +Drive.wear.tir.toFixed(3), bat: +Drive.wear.bat.toFixed(3), plugs: +Drive.wear.plugs.toFixed(3), oilMi: Math.round(Drive.wear.oilMi) },
+    wear: { eng: +Drive.wear.eng.toFixed(3), trn: +Drive.wear.trn.toFixed(3), brk: +Drive.wear.brk.toFixed(3), tir: +Drive.wear.tir.toFixed(3), bat: +Drive.wear.bat.toFixed(3), plugs: +Drive.wear.plugs.toFixed(3), gen: +(Drive.wear.gen ?? 1).toFixed(3), oilMi: Math.round(Drive.wear.oilMi) },
     doorAng: +Drive.doorAng.toFixed(2), hoodAng: +Drive.hoodAng.toFixed(2), sigL: Drive.sigL, sigR: Drive.sigR, wipers: Drive.wipers,
     leverX: homeRefs.belAir && homeRefs.belAir.userData.lever ? +homeRefs.belAir.userData.lever.rotation.x.toFixed(2) : null,
     bodyPitch: +Drive.pitch.toFixed(4), bodyY: homeRefs.belAir && homeRefs.belAir.userData.bodyG ? +homeRefs.belAir.userData.bodyG.position.y.toFixed(4) : null,
@@ -5153,6 +5308,12 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   needsSet: (k, v) => { if (k in Needs) Needs[k] = v; },
   errandId: () => { const e = errandHere(); return e ? e.id : null; },
   doErrand: () => doErrand(),
+  partsFacts: () => ({ shelf: Object.assign({}, Parts.shelf), mail: Object.assign({}, Parts.mail), installing: Parts.installing ? Parts.installing.id : null, mailReady: mailReady(), shelfLine: partsShelfLine() }),
+  partsOrder: (id) => orderPart(id),
+  partsDeliver: () => { for (const k in Parts.mail) Parts.mail[k] = 0; },
+  partsCollect: () => collectMail(),
+  partsInstall: () => startInstall(),
+  partsCardOpen: () => !document.getElementById("partsCard").classList.contains("hidden"),
   gearUp: () => { cycleGear(); return Drive.gear; },
   setFuel: g => { Drive.fuel = clamp(g, 0, 16); Drive.tripFuel = null; },
   carPlace: (x, z, h) => { const car = homeRefs.belAir; if (car) { car.position.set(x, 0.02, z); car.rotation.y = h || 0; Drive.heading = car.rotation.y; Drive.speed = 0; updateBelAirSolid(); } return !!car; },
@@ -5247,4 +5408,4 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
     return { tris: Math.round(tris), verts, geoMB: +(geoBytes / 1048576).toFixed(3),
       texMB: +(texBytes / 1048576).toFixed(2), totalMB: +(total / 1048576).toFixed(2) };
   },
-  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.6.0" });
+  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.7.0" });

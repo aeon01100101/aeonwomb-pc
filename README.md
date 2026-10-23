@@ -1,4 +1,4 @@
-# Aeon Womb — for PC (v0.6.0)
+# Aeon Womb — for PC (v0.7.0)
 
 The Android womb explorer, rebuilt for PC in **real 3D** (WebGL via
 Three.js r149, vendored — no downloads, no build step, no internet
@@ -90,6 +90,18 @@ see, plus keyboard + mouse controls.
   crunchy nearest-neighbour pixels, flat facets, low-poly shapes,
   and the classic vertex wobble — corners snap to a grid, just like
   1995.
+
+## What's new in v0.7.0
+
+**Real car parts — the My Summer Car layer, part 2.** The
+station services a car; it can't un-wear it. Seven components
+now wear for real — battery, plugs, brake shoes, whitewalls,
+generator, engine, Powerglide — and the fixes are physical:
+order at the Post Office (the card shows every part's honest
+wear), the parcel comes to her home mailbox (watch the red
+flag), and a part is fitted at the car with the wrench key R,
+hood up, a couple of minutes under the bonnet. The condition
+card (I) tracks it all, shelf included.
 
 ## What's new in v0.6.0
 
