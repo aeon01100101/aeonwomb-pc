@@ -17,7 +17,10 @@ const FILES = {
   "http://womb.test/assets/lullaby.wav": ["assets/lullaby.wav", "audio/wav"],
   "http://womb.test/vendor/three.min.js": ["vendor/three.min.js", "text/javascript"],
   "http://womb.test/vendor/GLTFLoader.js": ["vendor/GLTFLoader.js", "text/javascript"],
-  "http://womb.test/packs/cars/belair56/model.glb": ["packs/cars/belair56/model.glb", "model/gltf-binary"]
+  "http://womb.test/packs/cars/belair56/model.glb": ["packs/cars/belair56/model.glb", "model/gltf-binary"],
+  "http://womb.test/packs/cars/fusion/coupe.glb": ["packs/cars/fusion/coupe.glb", "model/gltf-binary"],
+  "http://womb.test/packs/cars/fusion/taxi.glb": ["packs/cars/fusion/taxi.glb", "model/gltf-binary"],
+  "http://womb.test/packs/cars/fusion/cruiser.glb": ["packs/cars/fusion/cruiser.glb", "model/gltf-binary"]
 };
 const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--use-angle=swiftshader",
   "--enable-unsafe-swiftshader", "--no-sandbox", "--mute-audio", "--window-size=1280,720",
@@ -86,6 +89,11 @@ await shot("content-mailbox.png");
 await evalJs("WOMB.momPlace(0, 24); WOMB.homeOrbit(2.4, 0.28);");
 await sleep(4000);
 await shot("content-mainst.png");
+await sleep(3500);
+console.log("FUSION FACTS:", JSON.stringify(await evalJs("WOMB.fusionFacts()")));
+await evalJs("WOMB.momPlace(-11.5, 43.2); WOMB.homeOrbit(-0.74, 0.52);");
+await sleep(3000);
+await shot("content-faircars.png");
 console.log("PAGE ERRORS:", errors.length ? errors.slice(0, 3).join(" | ") : "none");
 try { proc.kill(); } catch { }
 process.exit(0);

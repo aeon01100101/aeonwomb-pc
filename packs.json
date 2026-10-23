@@ -30,6 +30,17 @@
       "name": "\ud83d\ude99 Satsuma E10 (My Summer Car)",
       "probe": "packs/cars/satsuma/model.glb",
       "sizeText": "133 MB"
+    },
+    {
+      "files": [
+        "packs/cars/fusion/coupe.glb",
+        "packs/cars/fusion/taxi.glb",
+        "packs/cars/fusion/cruiser.glb"
+      ],
+      "id": "car-fusion",
+      "name": "\ud83c\udfaa County Fair show cars (3)",
+      "probe": "packs/cars/fusion/coupe.glb",
+      "sizeText": "5 MB"
     }
   ]
 }

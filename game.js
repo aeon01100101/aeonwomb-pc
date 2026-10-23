@@ -1442,7 +1442,7 @@ loop();
 // debug/test handle (used by the CDP play-test)
 window.WOMB = { world, WombAudio, startGame, rebuildWorld, quitToMenu, setGfx,
   renderer: () => renderer, gfxMode: () => gfxMode, openQM, closeQM, qmOpen: () => qmOpen,
-  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.10.0",
+  setMode(m) { selMode = m; refreshMenu(); }, doKick, version: "0.11.0",
   packsEnabled: () => { try { return JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { return {}; } } };
 
 // ------------------------------------------------------------ the Lobby
@@ -2908,6 +2908,46 @@ function loadSatsumaParked(T) {
     Drive.satsumaOn = true;
   }, undefined, () => { /* pack not installed */ });
 }
+// ---- the FusionFall show cars (private pack): three rigged
+// cartoon cars from the FusionFall pool, parked along Central
+// Park's north edge as the county-fair show row. Their rigs use
+// the same part names as the Bel Air shell (doors, spin+steer
+// wheels, steering wheel) — parked for now, drivable-ready if
+// the Drive system is ever generalised. Pack files are private:
+// they are NOT in the public repo.
+const FUSION_CARS = [
+  { file: "coupe", x: -17, z: 38.6, ry: 0.12 },
+  { file: "taxi", x: -11.5, z: 38.6, ry: -0.06 },
+  { file: "cruiser", x: -6, z: 38.6, ry: 0.2 }
+];
+function loadFusionShowCars(T) {
+  let packs = {};
+  try { packs = JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { }
+  if (packs["car-fusion"] === false || !THREE.GLTFLoader) return;
+  homeRefs.fusionCars = [];
+  for (const spec of FUSION_CARS) {
+    new THREE.GLTFLoader().load("packs/cars/fusion/" + spec.file + ".glb", (gltf) => {
+      const car = gltf.scene;
+      car.traverse(o => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        // These exports baked their shading into the paint maps as a
+        // dark greyscale lightmap; multiplied by the paint colour in
+        // standard PBR that crushes the cars to black. The paints
+        // carry their true colour in the material colour itself, so
+        // the paints render flat (very FusionFall) and the detail
+        // maps stay where they belong: tires, trim, chrome.
+        const ms = Array.isArray(o.material) ? o.material : [o.material];
+        for (const m of ms) if (m && m.map && (m.name === "paint_primary" || m.name === "paint_secondary")) { m.map = null; m.needsUpdate = true; }
+      });
+      car.position.set(spec.x, 0.02, spec.z);
+      car.rotation.y = spec.ry;
+      (homeRefs.townG || T).add(car);
+      homeRefs.fusionCars.push(spec.file);
+      if (homeRefs.solids) homeRefs.solids.push({ x0: spec.x - 1.35, x1: spec.x + 1.35, z0: spec.z - 2.1, z1: spec.z + 2.1, zone: "town" });
+    }, undefined, () => { /* pack not installed */ });
+  }
+}
 function makeTrafficCar(color) {
   const g = new THREE.Group();
   const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.2 });
@@ -3429,6 +3469,7 @@ function buildTown() {
   updateBelAirSolid();
   loadBelAirShell(bel);
     loadSatsumaParked(T);
+    loadFusionShowCars(T);
   // ---- traffic: two cars working the block loop
   const traffic = [];
   for (const [col, s0] of [[0xb84a39, 0], [0x4a6a9c, 77]]) {
@@ -5402,6 +5443,7 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   partsFacts: () => ({ shelf: Object.assign({}, Parts.shelf), mail: Object.assign({}, Parts.mail), installing: Parts.installing ? Parts.installing.id : null, mailReady: mailReady(), shelfLine: partsShelfLine() }),
   contentFacts: () => ({ mailbox: !!homeRefs.grokMailbox, tickers: (homeRefs.contentTickers || []).length, placed: (homeRefs.contentPlaced || 0) + (homeRefs.contentPlacedHome || 0) }),
   lobbyFacts: () => ({ built: !!lobbyScene, menuUp: !$("startScreen").classList.contains("hidden") }),
+  fusionFacts: () => ({ cars: (homeRefs.fusionCars || []).slice() }),
   partsOrder: (id) => orderPart(id),
   partsDeliver: () => { for (const k in Parts.mail) Parts.mail[k] = 0; },
   partsCollect: () => collectMail(),
@@ -5501,4 +5543,4 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
     return { tris: Math.round(tris), verts, geoMB: +(geoBytes / 1048576).toFixed(3),
       texMB: +(texBytes / 1048576).toFixed(2), totalMB: +(total / 1048576).toFixed(2) };
   },
-  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.10.0" });
+  momFaceTex: () => homeRefs.faceTex ? homeRefs.faceTex.image.width : 0, version: "0.11.0" });

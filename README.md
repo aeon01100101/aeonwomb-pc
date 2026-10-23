@@ -1,4 +1,4 @@
-# Aeon Womb — for PC (v0.10.0)
+# Aeon Womb — for PC (v0.11.0)
 
 The Android womb explorer, rebuilt for PC in **real 3D** (WebGL via
 Three.js r149, vendored — no downloads, no build step, no internet
@@ -90,6 +90,22 @@ see, plus keyboard + mouse controls.
   crunchy nearest-neighbour pixels, flat facets, low-poly shapes,
   and the classic vertex wobble — corners snap to a grid, just like
   1995.
+
+## What's new in v0.11.0
+
+**The county-fair show cars.** Three rigged cars from the
+FusionFall pool — the Monster Coupe, the Monster Taxi and the
+Sector Cruiser — now park along Central Park's north edge by
+the gazebo as a little show row, in their own optional pack
+(5 MB, toggle it in the launcher). Their exports baked shading
+into the paint maps as dark greyscale, which crushes them to
+black in standard lighting; the loader renders their paints in
+their true material colours (very FusionFall) and keeps the
+detail maps on tires, trim and chrome. The rigs use the same
+part names as the Bel Air shell — doors on pivots, spin+steer
+wheels, a steering wheel — so they are drivable-ready if the
+driving system is ever generalised. Private builds only, like
+every extracted model.
 
 ## What's new in v0.10.0
 
