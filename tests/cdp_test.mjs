@@ -67,7 +67,12 @@ try {
     if (m.id && pending.has(m.id)) { pending.get(m.id).res(m); pending.delete(m.id); }
     if (m.method === 'Runtime.exceptionThrown') problems.push('EXCEPTION: ' + JSON.stringify(m.params.exceptionDetails).slice(0, 300));
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') problems.push('CONSOLE ERROR: ' + JSON.stringify(m.params.args).slice(0, 200));
-    if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error') problems.push('LOG ERROR: ' + m.params.entry.text);
+    if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error') {
+      // the harness deliberately 404s oversized pack files (see the
+      // Fetch handler); the game treats that as "pack not installed",
+      // so those resource logs are not page errors.
+      if (!(m.params.entry.url || '').includes('/packs/')) problems.push('LOG ERROR: ' + m.params.entry.text);
+    }
     if (m.method === 'Fetch.requestPaused') {
       const u = new URL(m.params.request.url);
       let rel = decodeURIComponent(u.pathname);
@@ -78,7 +83,11 @@ try {
         ws.send(JSON.stringify({ id: ++msgId, method: 'Fetch.fulfillRequest', params: { requestId: rid, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'image/png' }], body: '' } }));
         return;
       }
-      if (!file.startsWith(WEBROOT) || !fs.existsSync(file)) {
+      if (!file.startsWith(WEBROOT) || !fs.existsSync(file) || fs.statSync(file).size > 40_000_000) {
+        // oversized pack files (the 133 MB Satsuma) would wedge the
+        // CDP pipe as one giant base64 message; the game treats a
+        // 404 as "pack not installed" and falls back — packs have
+        // their own probes.
         ws.send(JSON.stringify({ id: ++msgId, method: 'Fetch.fulfillRequest', params: { requestId: rid, responseCode: 404, body: '' } }));
       } else {
         const body = fs.readFileSync(file).toString('base64');

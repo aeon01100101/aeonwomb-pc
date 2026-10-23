@@ -2830,6 +2830,40 @@ function loadBelAirShell(car) {
     Drive.shellOn = true;
   }, undefined, () => { /* pack not installed — the '53 stays */ });
 }
+// ---- the Satsuma E10 (BeamNG port of the My Summer Car
+// Datsun, bone-stock) — a launcher pack; parks at the gas
+// station when installed, a neighbour's pride and joy.
+function loadSatsumaParked(T) {
+  let packs = {};
+  try { packs = JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { }
+  if (packs["car-satsuma"] === false || !THREE.GLTFLoader) return;
+  new THREE.GLTFLoader().load("packs/cars/satsuma/model.glb", (gltf) => {
+    const car = gltf.scene;
+    const wheel = car.getObjectByName("wheel");
+    if (wheel) {
+      wheel.visible = false; // the centred spare becomes four corners below
+      for (const [wx, wz] of [[-0.60, 1.06], [0.60, 1.06], [-0.60, -1.06], [0.60, -1.06]]) {
+        const w = wheel.clone();
+        w.visible = true;
+        w.position.set(wx, 0.27, wz);
+        if (wx > 0) w.rotation.y = Math.PI;
+        car.add(w);
+      }
+    }
+    car.traverse(o => {
+      if (!o.isMesh) return;
+      const ms = Array.isArray(o.material) ? o.material : [o.material];
+      const isGlass = ms.some(m => m && m.name && m.name.includes("glass"));
+      o.castShadow = !isGlass;
+      if (isGlass) ms.forEach(m => { if (m.name.includes("glass")) { m.transparent = true; m.opacity = 0.5; m.depthWrite = false; } });
+    });
+    car.position.set(-21.5, 0.02, 29.0);
+    car.rotation.y = -0.35;
+    (homeRefs.townG || T).add(car);
+    homeRefs.satsuma = car;
+    Drive.satsumaOn = true;
+  }, undefined, () => { /* pack not installed */ });
+}
 function makeTrafficCar(color) {
   const g = new THREE.Group();
   const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.2 });
@@ -2870,6 +2904,70 @@ function makePerson3D(dressC, skinC) {
   }
   g.userData.arms = arms;
   return g;
+}
+// ---- zones, KH1-style: her lot is one zone, the town is
+// another. Only the zone she stands in is loaded (rendered +
+// solid); crossing the property line runs the Blink and the
+// other side loads in around her. Same coordinates both
+// sides — the world is continuous, the loading is not.
+const Zone = { active: "lot", busy: false };
+const LOT = { x0: -8.6, x1: 8.6, z0: -16.6, z1: 13.2 };
+function inLot(x, z, pad = 0) { return x > LOT.x0 - pad && x < LOT.x1 + pad && z > LOT.z0 - pad && z < LOT.z1 + pad; }
+function solidLive(s) { return !s.zone || s.zone === "both" || s.zone === Zone.active; }
+let blinkEl = null, blinkCap = null;
+function ensureBlink() {
+  if (blinkEl) return;
+  blinkEl = document.createElement("div");
+  blinkEl.style.cssText = "position:fixed;inset:0;background:#06080c;opacity:0;pointer-events:none;transition:opacity .26s ease;z-index:80;display:flex;align-items:center;justify-content:center;";
+  blinkCap = document.createElement("div");
+  blinkCap.style.cssText = "color:#f5e0ac;font-size:34px;font-family:Georgia,serif;letter-spacing:.04em;opacity:0;transition:opacity .2s ease;";
+  blinkEl.appendChild(blinkCap);
+  document.body.appendChild(blinkEl);
+}
+function runBlink(midFn, caption) {
+  ensureBlink();
+  blinkCap.textContent = caption || "";
+  blinkCap.style.opacity = caption ? "1" : "0";
+  blinkEl.style.opacity = "1";
+  setTimeout(() => {
+    if (midFn) midFn();
+    setTimeout(() => { blinkEl.style.opacity = "0"; blinkCap.style.opacity = "0"; }, 170);
+  }, 300);
+}
+function applyZone() {
+  if (homeRefs.lotG) homeRefs.lotG.visible = Zone.active === "lot";
+  if (homeRefs.townG) homeRefs.townG.visible = Zone.active === "town";
+}
+function partitionTown(T) {
+  const lotG = new THREE.Group(), townG = new THREE.Group();
+  homeScene.add(lotG); homeScene.add(townG);
+  homeRefs.lotG = lotG; homeRefs.townG = townG;
+  const box = new THREE.Box3(), c = new THREE.Vector3(), size = new THREE.Vector3();
+  for (const child of [...T.children]) {
+    if (child === homeRefs.belAir) continue; // her car crosses with her
+    if (homeRefs.traffic && homeRefs.traffic.includes(child)) { townG.add(child); continue; }
+    box.setFromObject(child);
+    if (box.isEmpty()) continue;
+    box.getCenter(c); box.getSize(size);
+    const spans = size.x > (LOT.x1 - LOT.x0) + 2 || size.z > (LOT.z1 - LOT.z0) + 2;
+    if (spans) continue; // ground, streets, river: live in both zones
+    (inLot(c.x, c.z) ? lotG : townG).add(child);
+  }
+  for (const s of homeRefs.solids)
+    s.zone = s === homeRefs.belAirSolid ? "both" : (inLot((s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2) ? "lot" : "town");
+  applyZone();
+}
+function zoneTick() {
+  if (!homeRefs.townG || Zone.busy) return;
+  const subj = Drive.active && homeRefs.belAir ? homeRefs.belAir.position : (homeRefs.mom ? homeRefs.mom.position : null);
+  if (!subj) return;
+  const inside = inLot(subj.x, subj.z, Zone.active === "lot" ? 0.35 : -0.35);
+  const want = inside ? "lot" : "town";
+  if (want !== Zone.active) {
+    Zone.busy = true;
+    runBlink(() => { Zone.active = want; applyZone(); }, want === "town" ? "🍂 Charles City" : "🏠 Home");
+    setTimeout(() => { Zone.busy = false; }, 850);
+  }
 }
 function buildTown() {
   const T = new THREE.Group();
@@ -3036,6 +3134,7 @@ function buildTown() {
   homeRefs.belAirSolid = belSolid;
   updateBelAirSolid();
   loadBelAirShell(bel);
+    loadSatsumaParked(T);
   // ---- traffic: two cars working the block loop
   const traffic = [];
   for (const [col, s0] of [[0xb84a39, 0], [0x4a6a9c, 77]]) {
@@ -3509,6 +3608,7 @@ function buildTown() {
   homeRefs.solids = solids;
   homeRefs.doors = doors;
   homeRefs.traffic = traffic;
+  partitionTown(T);
   homeRefs.townTick = (t, dt) => {
     const mom = homeRefs.mom;
     for (const ex of extras) ex(t, dt);
@@ -4159,6 +4259,7 @@ function carHits(x, z, h) {
     if (px > -60 && px < 60 && pz > 45.8 && pz < 54.6) return true; // the Cedar is not a road
     for (const s of homeRefs.solids) {
       if (s === homeRefs.belAirSolid) continue;
+      if (!solidLive(s)) continue;
       if (px > s.x0 - 0.1 && px < s.x1 + 0.1 && pz > s.z0 - 0.1 && pz < s.z1 + 0.1) return true;
     }
   }
@@ -4223,7 +4324,7 @@ function exitCar(force) {
   updateBelAirSolid();
   const h = Drive.heading, fx = Math.sin(h), fz = Math.cos(h), rx = Math.cos(h), rz = -Math.sin(h);
   const R = 0.2;
-  const blocked = (x, z) => homeRefs.solids && homeRefs.solids.some(s => x > s.x0 - R && x < s.x1 + R && z > s.z0 - R && z < s.z1 + R);
+  const blocked = (x, z) => homeRefs.solids && homeRefs.solids.some(s => solidLive(s) && x > s.x0 - R && x < s.x1 + R && z > s.z0 - R && z < s.z1 + R);
   let placed = false;
   for (const [sx, sz] of [[-2.7, 0], [2.7, 0], [0, 3.4], [0, -3.4], [-2.7, 2.4], [2.7, 2.4]]) {
     const wx = car.position.x + rx * sx + fx * sz, wz = car.position.z + rz * sx + fz * sz;
@@ -4780,6 +4881,7 @@ function syncHome(t, dt) {
   // mom breathes; her heart floats by the bump
   if (homeRefs.townTick) homeRefs.townTick(t, dt);
   driveTick(t, dt);
+  zoneTick();
   if (Drive.active) return; // the Bel Air owns the camera now
   if (homeRefs.rigPose) homeRefs.rigPose(t);
   if (homeRefs.mom) {
@@ -4813,7 +4915,7 @@ function syncHome(t, dt) {
         // the town: solid walls, fences, houses and her car,
         // resolved one axis at a time so she slides along them
         const R = 0.32;
-        const hitS = (x, z) => homeRefs.solids.some(s => x > s.x0 - R && x < s.x1 + R && z > s.z0 - R && z < s.z1 + R);
+        const hitS = (x, z) => homeRefs.solids.some(s => solidLive(s) && x > s.x0 - R && x < s.x1 + R && z > s.z0 - R && z < s.z1 + R);
         if (hitS(nx, oz)) nx = ox;
         if (hitS(ox, nz)) nz = oz;
         if (hitS(nx, nz)) { nx = ox; nz = oz; }
@@ -4980,6 +5082,9 @@ Object.assign(window.WOMB, { enterHome, exitHome, view: () => view, homeOpt: () 
   trafficCalm: (on) => { Drive.trafficCalm = !!on; },
   shellFacts: () => { const U = homeRefs.belAir ? homeRefs.belAir.userData : {}; return { on: !!Drive.shellOn, doorSign: Drive.shDoorSign || 1, hoodSign: Drive.shHoodSign || 1, mats: U.shMats ? { sigD: U.shMats.sigDriver.length, sigP: U.shMats.sigPass.length, tail: U.shMats.tail.length, head: U.shMats.head.length } : null, steer: !!U.shSteer, hood: !!U.shHood }; },
   shSign: (d, h) => { if (d) Drive.shDoorSign = d; if (h) Drive.shHoodSign = h; },
+  satsumaOn: () => !!Drive.satsumaOn,
+  zoneFacts: () => ({ active: Zone.active, lotKids: homeRefs.lotG ? homeRefs.lotG.children.length : 0, townKids: homeRefs.townG ? homeRefs.townG.children.length : 0, lotVis: homeRefs.lotG ? homeRefs.lotG.visible : null, townVis: homeRefs.townG ? homeRefs.townG.visible : null }),
+  forceZone: (z) => { Zone.active = z; applyZone(); },
   gearUp: () => { cycleGear(); return Drive.gear; },
   setFuel: g => { Drive.fuel = clamp(g, 0, 16); Drive.tripFuel = null; },
   carPlace: (x, z, h) => { const car = homeRefs.belAir; if (car) { car.position.set(x, 0.02, z); car.rotation.y = h || 0; Drive.heading = car.rotation.y; Drive.speed = 0; updateBelAirSolid(); } return !!car; },
