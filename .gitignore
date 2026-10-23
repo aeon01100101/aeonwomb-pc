@@ -1,0 +1,4 @@
+shots/
+packs/cars/
+*.zip
+__pycache__/

@@ -1,0 +1,35 @@
+{
+  "game": "Aeon Womb PC",
+  "packs": [
+    {
+      "files": [],
+      "id": "core",
+      "name": "The Womb (core game)",
+      "sizeText": "always on"
+    },
+    {
+      "files": [],
+      "id": "town",
+      "name": "Charles City, Iowa \u2014 the town",
+      "sizeText": "built in (for now)"
+    },
+    {
+      "files": [
+        "packs/cars/belair56/model.glb"
+      ],
+      "id": "car-belair",
+      "name": "\ud83d\ude97 1956 Bel Air (real mod model)",
+      "probe": "packs/cars/belair56/model.glb",
+      "sizeText": "16 MB"
+    },
+    {
+      "files": [
+        "packs/cars/satsuma/model.glb"
+      ],
+      "id": "car-satsuma",
+      "name": "\ud83d\ude99 Satsuma E10 (My Summer Car)",
+      "probe": "packs/cars/satsuma/model.glb",
+      "sizeText": "coming with the fleet"
+    }
+  ]
+}

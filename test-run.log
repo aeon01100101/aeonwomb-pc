@@ -1,0 +1,66 @@
+screenshot: 01-title.png 379946 bytes
+PASS title screen visible
+PASS home: suburban house shown
+screenshot: 00-home-suburban.png 299478 bytes
+PASS home: apartment switch works
+screenshot: 00b-home-apartment.png 255712 bytes
+PASS home: decorate panel opens
+screenshot: 00c-home-decorate.png 175901 bytes
+PASS FPOV: through her eyes (head hidden, camera at her head)
+PASS FPOV: W walks her (0.22 m)
+screenshot: 00e-fpov 246738 bytes
+screenshot: 00f-fpov-bump 584088 bytes
+PASS gesture mode handles this machine gracefully (unsupported)
+PASS gesture zone -> Input turn (1)
+PASS third person restores her head
+PASS starburst mirror is a live reflection
+PASS both hands rest on the bump (surface dist 0.035)
+screenshot: 00g-mirror.png 201248 bytes
+PASS she has a modeled, rigged chest
+PASS her bump grows with the weeks (0.72 -> 1.16)
+PASS hands stay on the bump at week 40
+PASS mom face texture painted at 2048
+mom model stats: {"tris":30150,"verts":20854,"geoMB":0.804,"texMB":2.6,"totalMB":3.4}
+PASS mom model data in the 1-4 MB band (3.4 MB)
+PASS mom model has at least 6,000 vertices (20854)
+mom rig: {"bones":182}
+PASS mom rig has exactly 182 bones (180 + her chest)
+screenshot: 00d-mom-face.png 479733 bytes
+PASS home: exit returns to title
+PASS town: Charles City stands (doors 3, solids 41, traffic 2)
+PASS car: she gets in
+PASS car: a flat battery refuses to crank
+PASS car: engine starts on a charged battery
+PASS car: mouse throttle moves her
+PASS car: the Powerglide shifts itself (auto 2 at 24.1 mph)
+PASS car: the generator outruns the draw at cruise (18.1 A)
+PASS car: driving drinks fuel (11.5 -> 11.498 gal)
+PASS car: she refuels at the Main Street pumps
+PASS car: back to title, KH3 restored
+screenshot: 02-spawn.png 426352 bytes
+spawn: {"x":0.00023605691642822986,"z":-16.5934256869235,"r":18,"bubbles":6}
+PASS explorer world sane (radius 18, 6 bubbles)
+PASS Ouch Budget mode engages (mode=budget, pixelRatio=0.8)
+screenshot: 02b-budget.png 260419 bytes
+budget-mode fps under SwiftShader: 2
+distance swum: 0.94 | sim seconds in 7 wall seconds: 0.25
+PASS W swims the player forward (3.75 u/sim-s)
+screenshot: 03-swam.png 267151 bytes
+PASS bubble collects on contact (count=1)
+screenshot: 04-bubble.png 366780 bytes
+PASS Early 2K (PS2) mode engages
+screenshot: 02c-ps2.png 405072 bytes
+PASS Early 90s (PS1) mode engages + pixelated upscale (pixelated)
+screenshot: 02d-ps1.png 161406 bytes
+PASS KH3 mode restores
+PASS Quick Menu opens on Tab
+PASS world pauses while the Quick Menu is up
+screenshot: 06-quickmenu.png 294871 bytes
+PASS era tile inside Quick Menu switches graphics
+PASS Resume closes the Quick Menu
+PASS fetus: belly + kick UI shown
+screenshot: 05-fetus.png 489782 bytes
+PASS fetus: KICK registers (kicks=1)
+PASS render loop pumps frames (6 in 20s)
+NO PAGE ERRORS
+RESULT: ALL PASS

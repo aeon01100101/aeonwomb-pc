@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aeon Womb — Launcher</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; font-family: "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(180deg, #8ec9ee 0%, #cfe9f7 55%, #f7e8c4 100%);
+    color: #233043; display: flex; flex-direction: column; align-items: center;
+    padding: 28px 16px 48px;
+  }
+  h1 { font-size: 44px; margin: 10px 0 2px; letter-spacing: 0.5px; }
+  .sub { font-size: 18px; opacity: 0.75; margin-bottom: 26px; }
+  .card {
+    background: rgba(255,255,255,0.88); border-radius: 18px; padding: 20px 22px;
+    width: min(680px, 94vw); box-shadow: 0 8px 28px rgba(35,48,67,0.18);
+    margin-bottom: 18px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 22px; }
+  .playrow { display: flex; gap: 12px; flex-wrap: wrap; }
+  button.play {
+    flex: 1 1 150px; font-size: 22px; font-weight: 700; padding: 16px 10px;
+    border: none; border-radius: 14px; cursor: pointer; color: #fff;
+    background: #c2456e; box-shadow: 0 4px 0 #93334f;
+  }
+  button.play:active { transform: translateY(3px); box-shadow: 0 1px 0 #93334f; }
+  button.play.mom { background: #3f7fbf; box-shadow: 0 4px 0 #2a5a8c; }
+  button.play.fetus { background: #7a5fb0; box-shadow: 0 4px 0 #573f82; }
+  .eras { display: flex; gap: 8px; flex-wrap: wrap; }
+  .era {
+    flex: 1 1 120px; padding: 10px 6px; font-size: 16px; border-radius: 12px;
+    border: 2px solid #b9c9d8; background: #fff; cursor: pointer; text-align: center;
+  }
+  .era.on { border-color: #c2456e; background: #fdeef3; font-weight: 700; }
+  .pack {
+    display: flex; align-items: center; gap: 12px; padding: 10px 4px;
+    border-bottom: 1px solid #e3eaf1; font-size: 17px;
+  }
+  .pack:last-child { border-bottom: none; }
+  .pack .nm { flex: 1; }
+  .pack .sz { opacity: 0.6; font-size: 14px; }
+  .pill { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .pill.ok { background: #dff3df; color: #256b25; }
+  .pill.miss { background: #f7e3c8; color: #8a5a12; }
+  .pack input { width: 22px; height: 22px; accent-color: #c2456e; }
+  .pack.off .nm { opacity: 0.45; }
+  #loadWrap { display: none; }
+  #loadBarOuter { background: #e3eaf1; border-radius: 12px; height: 26px; overflow: hidden; }
+  #loadBar { background: #c2456e; height: 100%; width: 0%; transition: width 0.2s; }
+  #loadText { font-size: 18px; margin-top: 10px; min-height: 24px; }
+  .note { font-size: 14px; opacity: 0.65; line-height: 1.45; }
+</style>
+</head>
+<body>
+  <h1>💗 Aeon Womb</h1>
+  <div class="sub">The launcher loads only what you play — never everything at once.</div>
+
+  <div class="card">
+    <h2>▶ Play</h2>
+    <div class="playrow">
+      <button class="play" id="playWomb">🤰 The Womb</button>
+      <button class="play mom" id="playMom">🏠 Mom in Town</button>
+      <button class="play fetus" id="playFetus">👶 Fetus</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎨 Graphics</h2>
+    <div class="eras" id="eras">
+      <button class="era" data-era="kh3">👑 KH3</button>
+      <button class="era" data-era="ps2">🕹 Early 2K</button>
+      <button class="era" data-era="ps1">📺 Early 90s</button>
+      <button class="era" data-era="budget">😖 Ouch</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📦 Game packs</h2>
+    <div id="packs">Checking what's installed…</div>
+    <p class="note">Packs are the big pieces of the game — the town, each car.
+      A pack only loads when you play the part of the game that needs it, and
+      only if it's switched on here. Missing a pack? That part of the game
+      simply waits until you add its files next to the launcher.</p>
+  </div>
+
+  <div class="card" id="loadWrap">
+    <h2>⏳ Loading</h2>
+    <div id="loadBarOuter"><div id="loadBar"></div></div>
+    <div id="loadText">Getting things ready…</div>
+  </div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+
+// ---- graphics era (the game reads this same pref) ----
+let era = localStorage.getItem("awpc_gfx") || "kh3";
+function paintEras() {
+  document.querySelectorAll(".era").forEach(b =>
+    b.classList.toggle("on", b.dataset.era === era));
+}
+document.querySelectorAll(".era").forEach(b => b.addEventListener("click", () => {
+  era = b.dataset.era;
+  localStorage.setItem("awpc_gfx", era);
+  paintEras();
+}));
+paintEras();
+
+// ---- packs ----
+let manifest = null;
+let enabled = {};
+try { enabled = JSON.parse(localStorage.getItem("awpc_packs") || "{}"); } catch (e) { enabled = {}; }
+
+async function fileThere(path) {
+  try {
+    const r = await fetch(path, { method: "GET", cache: "no-store" });
+    return r.ok;
+  } catch (e) { return false; }
+}
+
+async function loadManifest() {
+  try {
+    const r = await fetch("packs.json", { cache: "no-store" });
+    manifest = await r.json();
+  } catch (e) {
+    $("#packs").textContent = "Couldn't read packs.json — the game will run with its core only.";
+    manifest = { packs: [] };
+    return;
+  }
+  const wrap = $("#packs");
+  wrap.textContent = "";
+  for (const p of manifest.packs) {
+    const row = document.createElement("div");
+    row.className = "pack";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = enabled[p.id] !== false;
+    cb.addEventListener("change", () => {
+      enabled[p.id] = cb.checked;
+      localStorage.setItem("awpc_packs", JSON.stringify(enabled));
+      row.classList.toggle("off", !cb.checked);
+    });
+    const nm = document.createElement("div");
+    nm.className = "nm";
+    nm.textContent = p.name;
+    const sz = document.createElement("div");
+    sz.className = "sz";
+    sz.textContent = p.sizeText || "";
+    const pill = document.createElement("div");
+    pill.className = "pill";
+    pill.textContent = "checking…";
+    row.append(cb, nm, sz, pill);
+    wrap.appendChild(row);
+    row.classList.toggle("off", !cb.checked);
+    // a pack counts as installed when its first file answers
+    const probe = (p.files && p.files[0]) || p.probe;
+    if (!probe) { pill.textContent = "built in"; pill.className = "pill ok"; }
+    else fileThere(probe).then(ok => {
+      pill.textContent = ok ? "installed ✓" : "not installed";
+      pill.className = "pill " + (ok ? "ok" : "miss");
+      row.dataset.installed = ok ? "1" : "";
+    });
+  }
+}
+loadManifest();
+
+// ---- launching: warm ONLY the packs this mode needs ----
+async function warmPacks(needIds) {
+  if (!manifest) return;
+  const need = manifest.packs.filter(p =>
+    needIds.includes(p.id) && enabled[p.id] !== false);
+  if (!need.length) return;
+  $("#loadWrap").style.display = "block";
+  let done = 0;
+  const total = need.reduce((a, p) => a + (p.files ? p.files.length : 0), 0) || 1;
+  for (const p of need) {
+    for (const f of (p.files || [])) {
+      $("#loadText").textContent = "Loading " + p.name + "…";
+      try { await fetch(f, { cache: "force-cache" }); } catch (e) { }
+      done++;
+      $("#loadBar").style.width = Math.round(done / total * 100) + "%";
+    }
+  }
+  $("#loadText").textContent = "Ready!";
+}
+
+async function play(mode) {
+  localStorage.setItem("awpc_launch_mode", mode);
+  const need = mode === "mom" ? ["town", "car-belair"] : [];
+  await warmPacks(need);
+  location.href = "index.html";
+}
+$("#playWomb").addEventListener("click", () => play("womb"));
+$("#playMom").addEventListener("click", () => play("mom"));
+$("#playFetus").addEventListener("click", () => play("fetus"));
+</script>
+</body>
+</html>

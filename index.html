@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aeon Womb — PC</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl"></canvas>
+
+  <!-- in-game HUD -->
+  <div id="hud" class="hidden">
+    <div id="topbar">
+      <span id="bubblesPill" class="pill">Sound bubbles: 0 / 6</span>
+      <span id="hintPill" class="pill dim"></span>
+      <span class="spacer"></span>
+      <button id="feelBtn" class="barbtn" title="Feel the heartbeat (H)">❤ Feel</button>
+      <button id="musicBtn" class="barbtn" title="Music box lullaby">🎵 Music: on</button>
+      <button id="momBtn" class="barbtn" title="Mom's voice (speech)">🗣 Mom: on</button>
+      <button id="soundBtn" class="barbtn" title="All sound">🔊 Sound: on</button>
+      <button id="gfxBtn" class="barbtn" title="Graphics mode (G)">👑 KH3</button>
+      <button id="qmBtn" class="barbtn" title="Quick Menu (Tab)">🎛 Menu</button>
+      <button id="quitBtn" class="barbtn" title="Back to the start screen">✕ Title</button>
+    </div>
+    <div id="message" class="hidden"></div>
+    <canvas id="minimap" width="168" height="168"></canvas>
+    <div id="kickUi" class="hidden">
+      <div id="kicksPill" class="pill">Your kicks: 0</div>
+      <button id="kickBtn">🦶<br>KICK!</button>
+    </div>
+    <div id="belly" class="hidden"></div>
+    <div id="controlsHelp">W A S D or ←↑↓→ swim &nbsp;·&nbsp; mouse looks (click the womb to grab the mouse) &nbsp;·&nbsp; look up to rise, down to sink &nbsp;·&nbsp; H feel heartbeat &nbsp;·&nbsp; Tab opens the Quick Menu &nbsp;·&nbsp; Esc releases the mouse</div>
+  </div>
+
+  <!-- VRChat-style Quick Menu: a big friendly panel that floats in
+       front of you. Tab opens it; the world waits while it's up. -->
+  <div id="quickMenu" class="hidden">
+    <div id="qmPanel">
+      <div id="qmHead">
+        <div class="qmAvatar">🫧</div>
+        <div class="qmTitle"><b>Aeon Womb</b><span id="qmWorld">First Weeks</span></div>
+        <div class="qmClock"><span id="qmClock">--:--</span><span id="qmFps">— fps</span></div>
+      </div>
+      <div id="qmBody">
+        <div id="qmRail">
+          <button data-tab="home" class="qmTab sel">🏠<span>Home</span></button>
+          <button data-tab="gfx" class="qmTab">🎨<span>Graphics</span></button>
+          <button data-tab="audio" class="qmTab">🔊<span>Audio</span></button>
+          <button data-tab="game" class="qmTab">👶<span>Game</span></button>
+          <button data-tab="help" class="qmTab">❓<span>Help</span></button>
+        </div>
+        <div id="qmPages">
+          <div class="qmPage" data-page="home">
+            <div class="qmTiles">
+              <button id="qmResume" class="qmTile big">▶<span>Resume</span></button>
+              <button id="qmRespawn" class="qmTile big">🚪<span>Respawn</span></button>
+              <button id="qmRestart" class="qmTile big">↻<span>Restart</span></button>
+              <button id="qmTitleBtn" class="qmTile big">🏠<span>Title Screen</span></button>
+            </div>
+            <div class="qmCard">
+              <h3>📍 You are here</h3>
+              <p id="qmStatus">…</p>
+              <p id="qmHint" class="qmDim">…</p>
+            </div>
+          </div>
+          <div class="qmPage hidden" data-page="gfx">
+            <div class="qmTiles" id="qmGfxTiles">
+              <button data-g="budget" class="qmTile">😖<span>Ouch — Budget</span></button>
+              <button data-g="kh3" class="qmTile">👑<span>KH3 On This</span></button>
+              <button data-g="ps2" class="qmTile">🕹<span>Early 2K (PS2)</span></button>
+              <button data-g="ps1" class="qmTile">📺<span>Early 90s (PS1)</span></button>
+            </div>
+            <p class="qmDim">Graphics switch live — no restart, no reload. The womb just… changes era.</p>
+          </div>
+          <div class="qmPage hidden" data-page="audio">
+            <div class="qmRow"><span>🔊 All sound</span><button id="qmSoundTgl" class="qmSwitch">On</button></div>
+            <div class="qmRow"><span>🎵 Music-box lullaby</span><button id="qmMusicTgl" class="qmSwitch">On</button></div>
+            <div class="qmRow"><span>🗣 Mom's voice</span><button id="qmMomTgl" class="qmSwitch">On</button></div>
+            <div class="qmRow"><span>🎚 Volume</span><input id="qmVol" type="range" min="0" max="100" value="90"></div>
+          </div>
+          <div class="qmPage hidden" data-page="game">
+            <h3>Mode</h3>
+            <div class="qmPickRow" id="qmModeRow">
+              <button data-mode="0">🧭 Explorer</button>
+              <button data-mode="1">👶 Fetus</button>
+            </div>
+            <h3>Babies</h3>
+            <div class="qmPickRow" id="qmBabiesRow">
+              <button data-n="1">1 Baby</button>
+              <button data-n="2">Twins</button>
+              <button data-n="3">Triplets</button>
+              <button data-n="8">Octuplets</button>
+            </div>
+            <h3>Time</h3>
+            <div class="qmPickRow" id="qmLevelRow">
+              <button data-l="0">🌱 First Weeks</button>
+              <button data-l="1">🌿 Growing</button>
+              <button data-l="2">🌳 Almost Time</button>
+            </div>
+            <button id="qmApplyGame" class="qmTile big wide">↻ Restart with these</button>
+          </div>
+          <div class="qmPage hidden" data-page="help">
+            <div class="qmCard">
+              <h3>How to swim</h3>
+              <p>🖱 <b>Mouse</b> looks — click the womb to grab it, Esc lets go.<br>
+              ⌨ <b>W A S D</b> / arrows swim. You swim where you look: up to rise, down to sink.<br>
+              🫧 Strokes surge like a breaststroke; let go and you glide.<br>
+              ❤ <b>H</b> feels the heartbeat · 🦶 <b>K</b> / Space kicks (fetus) · 🎨 <b>G</b> cycles graphics era · 🎛 <b>Tab</b> is this menu.</p>
+              <p class="qmDim">Mom walks, rolls and squeezes out there — and sometimes the water swishes. It's all in the physics, ported from the Android game.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="qmFoot">Tab closes · the world waits politely while you're here</div>
+    </div>
+  </div>
+
+  <!-- Mom mode: her home, in 3D -->
+  <div id="homeHud" class="hidden">
+    <div id="homeTopbar">
+      <span id="homeTitle" class="pill">🏠 Her Home</span>
+      <span class="spacer"></span>
+      <button id="homeDwellBtn" class="barbtn">🏢 Move to the apartment</button>
+      <button id="fpovBtn" class="barbtn">🎥 Third person</button>
+      <button id="gestureBtn" class="barbtn">🤚 Gestures</button>
+      <button id="homeDecorBtn" class="barbtn">🎨 Decorate</button>
+      <button id="homeShuffleBtn" class="barbtn">🎲 Shuffle the room</button>
+      <button id="homeExitBtn" class="barbtn">✕ Title</button>
+    </div>
+    <div id="homeMessage" class="hidden"></div>
+    <div id="homeHelp">Drag to look around her living room · 🎨 Decorate makes it hers · Mom mode is growing — her wardrobe, her day, and the 3D street come next</div>
+  </div>
+  <div id="carPrompt" class="hidden">🚗 <b>E</b> — get in the Bel Air</div>
+  <div id="driveHud" class="hidden">
+    <div class="dhMain"><span id="dhSpeed">0</span><small>mph</small></div>
+    <div class="dhCol">
+      <div class="dhRow"><span>GEAR</span><b id="dhGear">P</b> <b id="dhChoke"></b></div>
+      <div class="dhRow"><span>RPM</span><span class="dhBar"><i id="dhRpm"></i></span></div>
+      <div class="dhRow"><span>FUEL</span><span class="dhBar fuel"><i id="dhFuel"></i></span><b id="dhGal"></b></div>
+      <div class="dhRow"><span>CARB</span><b id="dhCarb">Factory</b></div>
+      <div class="dhRow"><span>COND</span><b id="dhWear">Good</b></div>
+    </div>
+    <div class="dhCol">
+      <div class="dhRow"><span>TRIP MPG</span><b id="dhMpg">—</b></div>
+      <div class="dhRow"><span>TRIP</span><b id="dhTrip">0.0 mi</b></div>
+      <div class="dhRow"><span>ODO</span><b id="dhOdo"></b></div>
+      <div class="dhRow"><span>ENG TEMP</span><span class="dhBar temp"><i id="dhTemp"></i></span></div>
+      <div class="dhRow"><span>THROTTLE</span><span class="dhBar thr"><i id="dhThr"></i></span></div>
+    </div>
+    <div id="dhPrompt"></div>
+  </div>
+  <div id="wearCard" class="hidden">
+    <h3>🔧 The Bel Air — Condition</h3>
+    <div class="wcRow"><span>ENGINE</span><span class="dhBar"><i id="wcEngB"></i></span><b id="wcEng"></b></div>
+    <div class="wcRow"><span>GEARBOX</span><span class="dhBar"><i id="wcTrnB"></i></span><b id="wcTrn"></b></div>
+    <div class="wcRow"><span>BRAKES</span><span class="dhBar"><i id="wcBrkB"></i></span><b id="wcBrk"></b></div>
+    <div class="wcRow"><span>TIRES</span><span class="dhBar"><i id="wcTirB"></i></span><b id="wcTir"></b></div>
+    <div class="wcRow"><span>BATTERY</span><span class="dhBar"><i id="wcBatB"></i></span><b id="wcBat"></b></div>
+    <div class="wcRow"><span>PLUGS</span><span class="dhBar"><i id="wcPluB"></i></span><b id="wcPlu"></b></div>
+    <div class="wcLine" id="wcOil"></div>
+    <div class="wcLine" id="wcElec"></div>
+    <div class="wcLine dim">At the Main Street station, engine off: F fuel · O oil change · Y tune-up · J battery charge</div>
+  </div>
+  <div id="gesturePip" class="hidden">
+    <video id="gestureVideo" muted playsinline></video>
+    <div class="gpLabel">🤚 lean ◀ ▶ = turn · step low = walk · hands up = pat</div>
+  </div>
+  <div id="homePanel" class="hidden">
+    <div class="hpCard">
+      <h2>🎨 Decorate her home</h2>
+      <div id="homePanelRows"></div>
+      <button id="hpDone">Done ✔</button>
+    </div>
+  </div>
+
+  <!-- start screen -->
+  <div id="startScreen">
+    <div class="card">
+      <h1>🫧 Aeon Womb <span class="pc">for PC</span></h1>
+      <p class="tag">A first-person womb explorer — now in real 3D. Swim the warm dark,
+        find the sleeping baby, and collect the golden sound bubbles: little pieces
+        of the world outside, carried in on the water.</p>
+
+      <h2>Choose a mode:</h2>
+      <div class="row" id="modeRow">
+        <button data-mode="0" class="pick sel">🧭 Explorer</button>
+        <button data-mode="1" class="pick">👶 Fetus — you ARE the baby</button>
+        <button data-mode="2" class="pick">🏠 Mom — 1960s housewife <span class="soon">NEW: her home, in real 3D — drag to look around</span></button>
+      </div>
+
+      <h2>How many babies?</h2>
+      <div class="row" id="babiesRow">
+        <button data-n="1" class="pick sel">1 Baby</button>
+        <button data-n="2" class="pick">Twins</button>
+        <button data-n="3" class="pick">Triplets</button>
+        <button data-n="8" class="pick">Octuplets</button>
+      </div>
+
+      <h2>Choose a time:</h2>
+      <div class="row" id="levelRow">
+        <button data-l="0" class="pick sel">🌱 First Weeks</button>
+        <button data-l="1" class="pick">🌿 Growing</button>
+        <button data-l="2" class="pick">🌳 Almost Time</button>
+      </div>
+      <p id="levelBlurb" class="blurb"></p>
+
+      <h2>Graphics:</h2>
+      <div class="row" id="gfxRow">
+        <button data-g="budget" class="pick">😖 Ouch — Budget Mode <span class="soon">for heroic little laptops: softer resolution, fewer sparkles</span></button>
+        <button data-g="kh3" class="pick sel">👑 I Could Run KH3 On This <span class="soon">full glow, full sparkle, full resolution</span></button>
+        <button data-g="ps2" class="pick">🕹 Early 2K Mode <span class="soon">PS2 soul: 480p, smooth textures, chunkier shapes</span></button>
+        <button data-g="ps1" class="pick">📺 Early 90s Mode <span class="soon">aka PS1 graphics: 240p, wobbly corners, crunchy pixels</span></button>
+      </div>
+
+      <button id="enterBtn">Enter the Womb ❤</button>
+      <p class="how">
+        🖱 <b>Mouse</b> looks around — <b>W A S D</b> swim. You swim where you look:
+        look up to rise, down to sink. Strokes come in surges, like a real breaststroke.<br>
+        🫧 Mother moves too — she walks, rolls over, and squeezes; sometimes the fluid
+        <b>swishes</b> and carries you. The heartbeat is always there. So is she. 🗣
+      </p>
+      <p id="albumLine" class="blurb"></p>
+    </div>
+  </div>
+
+  <!-- win screen -->
+  <div id="winScreen" class="hidden">
+    <div class="card">
+      <h1>💗 You did it!</h1>
+      <p id="winStats" class="tag"></p>
+      <div class="row center">
+        <button id="againBtn" class="pick">↻ Play again</button>
+        <button id="exploreBtn" class="pick">Keep exploring</button>
+        <button id="winMenuBtn" class="pick">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

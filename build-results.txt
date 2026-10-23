@@ -1,0 +1,247 @@
+Aeon Womb — for PC, v0.5.0 (Oct 22-23 2026)
+================================================
+THE TOWN UPDATE. Charles City, Iowa moves in around her
+house, and so does a 1953 Bel Air with a full working
+simulation under it. Mom mode is no longer a room — it's
+a life in a town.
+
+NEW IN v0.5.0 — the town of Charles City, Iowa:
+  - Her house is a real house now (siding, shingles, porch,
+    chimney) with THREE working hinge doors — front, back,
+    and a garden gate — that swing open as she approaches.
+  - Streets on a loop with two traffic cars, neighbour
+    houses, picket fences, waving laundry, swaying trees.
+  - Main Street: Betty's Bakery, The Grocer's, the Post
+    Office, Doyle's Diner, the Public Library — brick
+    storefronts with painted signs and awnings.
+  - The Charles Theatre with a chasing-bulb marquee
+    ("NOW SHOWING — THE MUSIC MAN"), the Floyd County
+    courthouse whose clock keeps real time, a white church,
+    Central Park with a gazebo, the Cedar River (animated
+    water, one footbridge), a railroad with flashing
+    crossing signals, the Co-Op grain elevator and silos,
+    two Oliver tractors, and the CHARLES CITY water tower
+    with a blinking beacon.
+  - Named townsfolk, all animated: Betty waves, Mr. Doyle
+    waves, Mr. Patterson walks his mail route, Mrs.
+    Kowalski knits on her porch, Little Timmy and Biscuit
+    the dog play. Nothing in town sits frozen.
+
+NEW IN v0.5.0 — the 1953 Bel Air, simulated properly:
+  - Drive her: E in/out, Enter to crank, G through
+    P R N D, W/S/A/D. The Powerglide shifts itself
+    (3.10 / 1.95 / 1.30) with real torque cuts.
+  - FUEL IS REAL: a 16-gallon tank, burn computed from
+    throttle, rpm and mixture — live MPG on the dash,
+    trip + odometer persist, hold F at the Main Street
+    pumps to refuel.
+  - CARBURETOR + CHOKE (MSC rules): the mixture screw
+    ([] keys, Park only) leans and riches her — and it
+    DRIFTS as she vibrates down the road. Lean + a cold
+    engine + no choke = she cranks and dies. The choke
+    (C) saves a cold start and floods a warm rich one,
+    and left out warm it fouls the plugs.
+  - VARIABLE MOUSE THROTTLE (V): pointer-lock mouse is
+    the gas pedal — push for more, it stays where you
+    leave it, wheel trims it.
+  - HARD SHIFTS: a mistuned carb makes the Powerglide
+    bang its shifts — longer torque cut, a jolt through
+    the camera, counted on the dash.
+  - 6-VOLT ELECTRICS: the starter draws 175 A, the
+    generator only earns its keep at revs (~10 A at
+    3,000 rpm, 6.8 V), headlights cost 9 A with the
+    engine off. Run it flat and she clicks at you.
+  - WEAR AND TEAR: engine, gearbox, brakes, tires,
+    battery health, plugs, oil miles — every system
+    ages by how she's treated (cold starts, redline,
+    old oil, hard shifts, braking energy). Key I shows
+    the condition card in plain language.
+  - STATION SERVICES at the pumps, engine off: F fuel,
+    O oil change, Y tune-up, J battery charge.
+  - EVERY FEATURE ANIMATES: the driver door swings, the
+    hood lifts over a real engine bay, the column lever
+    swings per gear, signals blink and self-cancel (Z/X),
+    the vacuum wipers sweep slower the harder you lean
+    on the throttle (U — a real '53 quirk), headlight
+    beams fade in (L), the horn is dual-tone (H), the
+    body pitches and rolls on its suspension, and the
+    tailpipe puffs — white when cold, dark when rich.
+
+NEW IN v0.5.0 — the FusionFall visual pass (home/town):
+  - Warm ACES tone mapping outdoors, a gradient sky dome,
+    long soft shadows, and painted procedural textures
+    for grass, asphalt, concrete, siding, shingles and
+    leaves. One colour-pipeline bug found and fixed on
+    the way: the new textures must decode as sRGB or the
+    renderer brightens them twice and the town washes
+    pale. The Bel Air's paint went clearcoat.
+
+VERIFICATION (headless Chromium, log files are the
+verdict): the drive-systems probe passes cold-start
+deaths (lean, no choke), choke starts, generator amps,
+headlight draw, station charging, wear round-trips,
+door/hood/lever/signal/wiper animation — and the hard
+shift lands (dedicated probe, PASS). The full CDP suite
+covers the town, the drive and all four graphics eras.
+The brake was accused and acquitted: measured decel
+matches the design (4.4 m/s^2) — earlier readings were
+the software renderer's slow clock.
+  Owned bugs this build: a bulk rename broke the car
+  body twice (fixed, screenshot-proven), a services rule
+  slammed the hood in Neutral (fixed), and the "hard
+  shift failure" chased for an evening turned out to be
+  a traffic car pacing her at 12 mph — traffic now
+  eases ahead when she comes up behind it.
+
+HONEST LIMITS: headless test rendering runs in slow
+motion (software GPU) — her real machine runs full
+speed. The car's body is still our procedural '53; the
+real '56 Bel Air mod model (downloaded, census taken)
+swaps in next, bone-stock as its modder built it.
+
+Aeon Womb — for PC, v0.4.0 (Oct 22 2026)
+================================================
+Stack: custom JS simulation (faithful port of the Android
+GameWorld.java) + Three.js r149 (vendored, MIT) for WebGL rendering
++ WebAudio synthesis + speechSynthesis for mom's voice. Plain
+HTML/CSS/JS — no build step, no downloads, offline-capable
+(the webcam gesture source uses only the browser's own
+getUserMedia; nothing leaves the machine).
+
+NEW IN v0.4.0 — mama mode FPOV + gesture support:
+  - FPOV MOM MODE (his ask): Mom mode now opens through her
+    own eyes and stays there by default (persisted choice).
+    * camera rides her eye point (head-bone space, ~1.617 m);
+    * her head cluster AND neck hide in first person (you
+      can't see your own neck), everything else of her stays:
+      look down and see her dress, apron, bump, brooch, and
+      the heart — and the rig's baby-kick pulses read from
+      the inside;
+    * WASD / arrow keys walk her around the room (1.45 m/s),
+      mouse-look via pointer lock on click, drag-look without
+      it; she turns to face where she looks; a gentle head
+      bob while walking; walls clamp her in, and the sofa and
+      TV are circle-collider obstacles;
+    * she starts FPOV facing INTO the room (window/TV side),
+      not at the wall behind her display pose;
+    * 🎥 Third person button (top bar) restores the orbit
+      camera and her head; 👀 brings FPOV back.
+  - INPUT LAYER (the architectural support he asked for):
+    the game no longer reads raw keys in gameplay code — an
+    Input object holds intent (moveX / moveZ / turn), polled
+    per frame. Keyboard/mouse are source #1. Any future
+    source (gamepad, depth camera, a real Kinect via a local
+    bridge) writes the same three numbers and just works.
+  - GESTURE SOURCE (Kinect-style, built in, source #2):
+    🤚 Gestures button (Mom-mode top bar) opens the webcam
+    (getUserMedia, 320x240) and runs frame-difference motion
+    zones on a 96x54 luminance grid at ~9 Hz:
+      motion weighted to a side of frame  -> turn that way
+      busy LOW frame (stepping in place)  -> walk forward
+      big HIGH frame (both hands up)      -> pat the bump
+        (she answers with a mom-voice line, throttled)
+    A mirrored picture-in-picture preview sits in the corner
+    with a legend. Fully guarded: no mediaDevices = a kind
+    "needs localhost" note; permission denied / no camera =
+    "denied" state, keyboard unaffected, zero page errors.
+    WOMB.gestureSim(zone) injects synthetic zone energy so
+    the whole chain (zones -> mapping -> Input -> movement)
+    is test-verifiable without a camera.
+
+Carries forward v0.3.x: the KH1-detail room and Aerith mom
+(2048² face, 19,904 verts, 3.3-3.7 MB model, exactly-180-bone
+animated rig), the womb in four graphics eras, fetus mode,
+the VRChat-style Quick Menu, mom's TTS voice.
+
+Known honest limits:
+  - Gesture recognition is MOTION-ZONE based (like early
+    Kinect minigames), not skeletal joint tracking — it
+    reads where movement happens in frame, not which limb
+    moved. The Input layer is where a real tracker would
+    land later.
+  - The webcam needs a secure context: launching via
+    start.sh / start.bat (http://localhost) works; opening
+    index.html as a file:// may block the camera (the game
+    itself still runs, gestures report "unsupported").
+  - FPOV walking currently lives in Mom mode; the womb's
+    swim still reads its original key path (the Input layer
+    is ready for it to adopt next).
+  - Verified under SwiftShader software rendering only —
+    the real-GPU / real-webcam verdict on Isaiah's PC is
+    still his to give.
+  - NOT published anywhere — release needs Isaiah's go-ahead.
+
+================================================================
+Aeon Womb for PC — v0.4.1 (hands on the bump + a real mirror)
+================================================================
+Isaiah's catch: "You forgot to add a certain something."
+He was right — twice over.
+
+HER HANDS, ON THE BUMP
+  - Both hands now cradle the bump (the left hand is a true
+    left hand — mirrored, thumb on the inside), resting on the
+    bump's upper cap where HER eyes can actually see them in
+    FPOV. Two earlier placements failed honestly: hands at the
+    bump's front-centre sit inside the belly surface, and lower
+    placements are occluded by her own dress from her eye
+    point (proven with an isolation render, not guessed).
+  - Fingers lie on the surface (palms sit 0.038 m off the
+    belly centre-radius by the suite's measure).
+  - The rig's baby kicks move the bump AND both hand bones
+    together — when the baby kicks, her hands ride it.
+  - Suite check: "both hands rest on the bump".
+
+THE STARBURST MIRROR IS A REAL MIRROR
+  - Decorating with the Starburst Mirror now gives a live
+    reflection: the room is rendered from a camera mirrored
+    across the mirror's plane into a 512x512 target the disc
+    wears (refreshed every 3rd frame).
+  - FPOV twist: her head is hidden in the main view, but the
+    mirror pass un-hides it — stand her in front of the
+    mirror and she sees her own face.
+  - Suite check: "starburst mirror is a live reflection".
+
+Suite: ALL PASS (30 checks), NO PAGE ERRORS, exit 0.
+  (The FPOV walk check now polls for distance covered
+  instead of a fixed 2 s window — SwiftShader frame rates
+  wander; the assertion is unchanged.)
+NOT published anywhere — release needs Isaiah's go-ahead.
+
+================================================================
+Aeon Womb for PC — v0.4.2 (her chest + a bump that grows)
+================================================================
+Isaiah's verdict on the guessing game: the bump never changed,
+and "work on her chest — you forgot to add and rig it."
+
+HER CHEST — MODELED AND RIGGED
+  - Two bust forms in dress fabric under the bodice; the apron
+    bib's profile was re-draped to sit over them naturally.
+  - Rigged on two new bones (bustL / bustR, parented to the
+    chest) that breathe with her chest in rigPose.
+  - The rig is now 182 bones — Isaiah's 180 plus the 2 he
+    ordered here. Suite asserts exactly 182.
+  - Model self-measure: 20,854 verts, 30,150 tris, 3.39 MB —
+    still inside the 1-4 MB band.
+
+A BUMP THAT GROWS (his Android spec, now on PC)
+  - bumpFactor() = week curve (x0.72 at week 8 -> x1.16 at
+    week 40) times (1 + 4% per extra baby).
+  - Decorate panel gains a "Her week" stepper (weeks 8-40,
+    persisted) with the fruit-size captions from the Android
+    build ("Week 24 - baby is about the size of a cantaloupe").
+  - The belly scales on its bone; her hand bones and forearm
+    aim ride out with the growth, so her hands stay ON the
+    bump at week 8 and week 40 alike (suite-verified);
+    kicks still pulse on top of any week's size.
+
+Build note (owned): the first pass referenced the new chest
+bones before declaring them — every home build threw and the
+probes caught it (rig read 180, home would not open). Fixed
+and re-verified before this release.
+
+Suite: ALL PASS (33 checks), NO PAGE ERRORS, exit 0.
+Next, per Isaiah: the town (v0.5.0) — a real house with
+front/back doors, yards, streets, buildings, animated
+everything, traffic, and her drivable 1953 Bel Air with
+working fuel, shifting, and mileage.
+NOT published anywhere — release needs Isaiah's go-ahead.
